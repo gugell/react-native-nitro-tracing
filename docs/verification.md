@@ -8,7 +8,7 @@
 - C++ host tests: parent identity, nested/concurrent spans, errors, cancellation at lifecycle boundaries, idempotence, expiry, budgets, eviction, imported timestamps and JSON escaping.
 - Real Sentry 8.27.0 JS tracing engine: completed span capture, parent/child export timestamps and transaction envelopes through an in-memory transport. No network or account required.
 - ESM/CJS/declaration build passes. Packed tarball contains native source, generated glue, podspec, all entry points, declarations and license. External production install succeeds without Sentry, Performance, Expo or Nitrogen installed; optional adapter modules import without loading those SDKs.
-- Android arm64 debug library compiles via Gradle with NDK 27.1.
+- Android arm64 debug library and complete Expo development-client APK compile via Gradle with NDK 27.1.
 - Full iOS Simulator debug example compiles with Xcode 26.6, React Native 0.85.3 and Expo SDK 56.
 
 ## iOS Simulator smoke test

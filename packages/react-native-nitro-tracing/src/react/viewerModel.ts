@@ -66,7 +66,7 @@ export const waterfall = (spans: SpanEvent[]) => {
       const seen = new Set([span.spanId])
       let parent = byId.get(span.parentSpanId)
       let depth = 0
-      while (parent && !seen.has(parent.spanId)) {
+      while (parent && depth < 8 && !seen.has(parent.spanId)) {
         seen.add(parent.spanId)
         depth++
         parent = byId.get(parent.parentSpanId)

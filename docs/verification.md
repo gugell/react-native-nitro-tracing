@@ -4,7 +4,7 @@
 
 - Nitro 0.37.1 codegen: all three HybridObjects generated from source.
 - TypeScript: library and Expo example pass.
-- Jest: 26 tests across plugin lifecycle, clock mapping, Sentry adapter, linear parent ordering, profiler recovery, client lifecycle, playground, viewer models and Expo adapter.
+- Jest: 27 tests across plugin lifecycle, clock mapping, Sentry adapter, linear parent ordering, profiler recovery, client lifecycle, playground, viewer models and Expo adapter.
 - C++ host tests: parent identity, nested/concurrent spans, errors, cancellation at lifecycle boundaries, idempotence, expiry, budgets, eviction, imported timestamps and JSON escaping.
 - Real Sentry 8.27.0 JS tracing engine: completed span capture, parent/child export timestamps and transaction envelopes through an in-memory transport. No network or account required.
 - ESM/CJS/declaration build passes. Packed tarball contains native source, generated glue, podspec, all entry points, declarations and license. External production install succeeds without Sentry, Performance, Expo or Nitrogen installed; optional adapter modules import without loading those SDKs.

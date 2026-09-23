@@ -70,3 +70,31 @@ it('keeps metric units separate and limits plotted samples', () => {
   expect(series[0].max).toBe(59)
   expect(series[0]).toMatchObject({ retainedCount: 60, startMs: 20, endMs: 59 })
 })
+
+it('caps work for deeply nested traces while retaining the visible hierarchy', () => {
+  let parentReads = 0
+  const spans = Array.from({ length: 3000 }, (_, index) =>
+    span({
+      spanId: String(index),
+      get parentSpanId() {
+        parentReads++
+        return index ? String(index - 1) : ''
+      },
+      timestampMs: index,
+    })
+  )
+  // Install lazy getters after fixture construction so traversal reads are measured.
+  spans.forEach((entry, index) =>
+    Object.defineProperty(entry, 'parentSpanId', {
+      get() {
+        parentReads++
+        return index ? String(index - 1) : ''
+      },
+    })
+  )
+  parentReads = 0
+  const rows = waterfall(spans)
+  expect(rows[1].depth).toBe(1)
+  expect(rows[2999].depth).toBe(8)
+  expect(parentReads).toBeLessThanOrEqual(spans.length * 9)
+})

@@ -7,7 +7,8 @@
     "test": "pnpm --filter react-native-nitro-tracing test",
     "test:native": "pnpm --filter react-native-nitro-tracing test:native",
     "codegen": "pnpm --filter react-native-nitro-tracing nitrogen",
-    "example": "pnpm --dir apps/example"
+    "example": "pnpm --dir apps/example",
+    "build": "pnpm --filter react-native-nitro-tracing build"
   },
   "devDependencies": {
     "prettier": "^3.8.3"

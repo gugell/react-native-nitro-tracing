@@ -1,8 +1,19 @@
 import type { HybridObject } from 'react-native-nitro-modules'
 import type { TraceSpan } from './TraceSpan.nitro'
-import type { CompletedSpanOptions, SpanOptions, MarkOptions, MetricOptions, ReadOptions, TracePage, RecordingStats } from '../types'
+import type {
+  CompletedSpanOptions,
+  SpanOptions,
+  MarkOptions,
+  MetricOptions,
+  ReadOptions,
+  TracePage,
+  RecordingStats,
+} from '../types'
 /** Owns bounded native history. Stop before export; dispose when all readers are done. */
-export interface Recording extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
+export interface Recording extends HybridObject<{
+  ios: 'c++'
+  android: 'c++'
+}> {
   /** Start a span, optionally linked to an explicit parent. */
   startSpan(options: SpanOptions): TraceSpan
   /** Import a completed measurement; returns its native span identity. */

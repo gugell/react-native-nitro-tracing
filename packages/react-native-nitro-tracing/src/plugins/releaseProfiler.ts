@@ -21,7 +21,9 @@ export interface ReleaseProfilerPlugin extends TracePlugin {
 // Hermes profiling is process-wide, so two plugin instances must not compete.
 let owner: object | undefined
 /** Attach manual Hermes profile controls to a recording. */
-export function createReleaseProfilerPlugin(api: ReleaseProfilerApi): ReleaseProfilerPlugin {
+export function createReleaseProfilerPlugin(
+  api: ReleaseProfilerApi
+): ReleaseProfilerPlugin {
   const identity = {}
   let context: PluginContext | undefined
   let active = false
@@ -31,28 +33,59 @@ export function createReleaseProfilerPlugin(api: ReleaseProfilerApi): ReleasePro
   const plugin: ReleaseProfilerPlugin = {
     id: 'release-profiler',
     start(next) {
-      if (context) throw new Error('Release profiler plugin is already attached')
+      if (context)
+        throw new Error('Release profiler plugin is already attached')
       context = next
-      return { async stop() {
-        try { if (active) await plugin.stopProfiling() } finally { context = undefined }
-      } }
+      return {
+        async stop() {
+          try {
+            if (active) await plugin.stopProfiling()
+          } finally {
+            context = undefined
+          }
+        },
+      }
     },
     startProfiling() {
-      if (!context) throw new Error('Attach release-profiler plugin before profiling')
+      if (!context)
+        throw new Error('Attach release-profiler plugin before profiling')
       if (owner) throw new Error('A release profiler session is already active')
-      if (api.startProfiling() === false) throw new Error('Hermes sampling profiler is unavailable in this build')
-      owner = identity; active = true; path = undefined
-      try { span = context.recording.startSpan({ name: 'hermes.profile', correlationId: '', attributes: [{ key: 'source', value: 'release-profiler' }] }) }
-      catch (error) { context.reportError(error) }
+      if (api.startProfiling() === false)
+        throw new Error('Hermes sampling profiler is unavailable in this build')
+      owner = identity
+      active = true
+      path = undefined
+      try {
+        span = context.recording.startSpan({
+          name: 'hermes.profile',
+          correlationId: '',
+          attributes: [{ key: 'source', value: 'release-profiler' }],
+        })
+      } catch (error) {
+        context.reportError(error)
+      }
     },
     stopProfiling() {
       if (stopping) return stopping
-      if (!active) return Promise.reject(new Error('No release profiler session is active'))
-      stopping = (async () => {
-        try { path = await api.stopProfiling(false); span?.end('success'); return path }
-        catch (error) { span?.end('error'); throw error }
-        finally { active = false; if (owner === identity) owner = undefined; span = undefined; stopping = undefined }
-      })()
+      if (!active)
+        return Promise.reject(
+          new Error('No release profiler session is active')
+        )
+      stopping = Promise.resolve().then(async () => {
+        try {
+          path = await api.stopProfiling(false)
+          span?.end('success')
+          return path
+        } catch (error) {
+          span?.end('error')
+          throw error
+        } finally {
+          active = false
+          if (owner === identity) owner = undefined
+          span = undefined
+          stopping = undefined
+        }
+      })
       return stopping
     },
     isProfiling: () => active,

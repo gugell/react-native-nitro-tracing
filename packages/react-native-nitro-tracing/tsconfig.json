@@ -6,13 +6,8 @@
     "strict": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": [
-      "react",
-      "jest"
-    ]
+    "types": ["react", "jest", "node"],
+    "jsx": "react-jsx"
   },
-  "include": [
-    "src",
-    "*.ts"
-  ]
+  "include": ["src", "*.ts"]
 }

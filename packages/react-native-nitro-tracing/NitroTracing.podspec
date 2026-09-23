@@ -11,7 +11,7 @@ Pod::Spec.new do |s|
   s.authors      = package["author"]
 
   s.platforms    = { :ios => min_ios_version_supported, :visionos => 1.0 }
-  s.source       = { :git => "https://github.com/margelo/nitro.git", :tag => "#{s.version}" }
+  s.source       = { :http => "https://registry.npmjs.org/#{package["name"]}/-/#{package["name"]}-#{s.version}.tgz" }
 
   s.source_files = [
     # Implementation (Swift)

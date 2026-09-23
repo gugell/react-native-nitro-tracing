@@ -8,11 +8,12 @@
 namespace margelo::nitro::tracingcore {
 // A native API independent of JSI; native workers may share this recorder directly.
 class Recorder final {
- public:
+public:
   using Clock = std::function<double()>;
   explicit Recorder(Config config, Clock clock = monotonicMilliseconds);
   uint64_t startSpan(Context context, std::string parentSpanId = {});
-  std::string recordSpan(Context context, std::string parent, double start, double duration, Outcome outcome, std::string sourceId = {}, std::string sourceParent = {});
+  std::string recordSpan(Context context, std::string parent, double start, double duration, Outcome outcome,
+                         std::string sourceId = {}, std::string sourceParent = {});
   void endSpan(uint64_t token, Outcome outcome);
   void mark(Context context, std::optional<double> timestamp = {});
   void metric(Context context, double value, std::string unit, std::optional<double> timestamp = {});
@@ -24,8 +25,14 @@ class Recorder final {
   std::string spanId(uint64_t token) const;
   size_t memorySize() const;
   static double monotonicMilliseconds();
- private:
-  struct Active { double start; Context context; std::string parent; size_t bytes; };
+
+private:
+  struct Active {
+    double start;
+    Context context;
+    std::string parent;
+    size_t bytes;
+  };
   Config config_;
   Clock clock_;
   double origin_;
@@ -47,4 +54,4 @@ class Recorder final {
   void evict();
   Stats statsAt(double time) const;
 };
-}
+} // namespace margelo::nitro::tracingcore

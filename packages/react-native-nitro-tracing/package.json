@@ -2,9 +2,9 @@
   "name": "react-native-nitro-tracing",
   "version": "0.1.0",
   "description": "Bounded native performance recordings and explicit spans for React Native",
-  "main": "src/index.ts",
-  "module": "src/index.ts",
-  "types": "src/index.ts",
+  "main": "lib/commonjs/index.cjs",
+  "module": "lib/module/index.mjs",
+  "types": "lib/typescript/src/index.d.ts",
   "react-native": "src/index",
   "source": "src/index",
   "files": [
@@ -23,7 +23,6 @@
     "ios/**/*.mm",
     "ios/**/*.cpp",
     "ios/**/*.swift",
-    "app.plugin.js",
     "nitro.json",
     "*.podspec",
     "README.md",
@@ -31,18 +30,28 @@
     "performance.ts",
     "sentry.ts",
     "release-profiler.ts",
-    "scripts"
+    "client.ts",
+    "react.ts",
+    "expo.ts",
+    "LICENSE",
+    "!src/**/*.test.*"
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",
     "nitrogen": "nitrogen",
-    "postinstall": "nitrogen",
     "test:native": "sh scripts/test-native.sh",
-    "test": "jest --runInBand"
+    "test": "jest --runInBand",
+    "build": "node scripts/build.mjs && tsc -p tsconfig.build.json",
+    "prepack": "pnpm nitrogen && pnpm build",
+    "test:sentry": "node scripts/test-sentry.cjs"
   },
   "keywords": [
     "react-native",
-    "nitro"
+    "nitro-modules",
+    "performance",
+    "tracing",
+    "profiler",
+    "expo"
   ],
   "author": "Margelo",
   "license": "MIT",
@@ -56,48 +65,30 @@
     "react-native": "catalog:",
     "react": "catalog:",
     "typescript": "catalog:",
-    "@types/react": "^19.2.15",
+    "@types/react": "~19.2.14",
     "react-native-performance": "catalog:",
     "@sentry/react-native": "catalog:",
     "jest": "catalog:",
     "babel-jest": "catalog:",
     "@types/jest": "catalog:",
     "@babel/preset-typescript": "^7.25.0",
-    "@babel/preset-env": "catalog:"
+    "@babel/preset-env": "catalog:",
+    "esbuild": "0.28.2",
+    "@types/node": "^22.0.0",
+    "expo-dev-client": "~56.0.27",
+    "expo-file-system": "~56.0.11",
+    "expo-sharing": "~56.0.26"
   },
   "peerDependencies": {
     "react": "*",
     "react-native": "*",
-    "react-native-nitro-modules": ">=0.37.1",
+    "react-native-nitro-modules": "^0.37.1",
     "react-native-performance": ">=6",
-    "@sentry/react-native": ">=7"
+    "@sentry/react-native": ">=8.27.0 <9",
+    "expo-dev-client": ">=56",
+    "expo-file-system": ">=56",
+    "expo-sharing": ">=56"
   },
-  "eslintConfig": {
-    "root": true,
-    "extends": [
-      "@react-native",
-      "prettier"
-    ],
-    "plugins": [
-      "prettier"
-    ],
-    "rules": {
-      "prettier/prettier": [
-        "warn",
-        {
-          "quoteProps": "consistent",
-          "singleQuote": true,
-          "tabWidth": 2,
-          "trailingComma": "es5",
-          "useTabs": false
-        }
-      ]
-    }
-  },
-  "eslintIgnore": [
-    "node_modules/",
-    "lib/"
-  ],
   "prettier": {
     "quoteProps": "consistent",
     "singleQuote": true,
@@ -112,6 +103,74 @@
     },
     "@sentry/react-native": {
       "optional": true
+    },
+    "expo-dev-client": {
+      "optional": true
+    },
+    "expo-file-system": {
+      "optional": true
+    },
+    "expo-sharing": {
+      "optional": true
     }
+  },
+  "exports": {
+    ".": {
+      "types": "./lib/typescript/src/index.d.ts",
+      "react-native": "./src/index.ts",
+      "import": "./lib/module/index.mjs",
+      "require": "./lib/commonjs/index.cjs",
+      "default": "./lib/module/index.mjs"
+    },
+    "./client": {
+      "types": "./lib/typescript/client.d.ts",
+      "react-native": "./client.ts",
+      "import": "./lib/module/client.mjs",
+      "require": "./lib/commonjs/client.cjs",
+      "default": "./lib/module/client.mjs"
+    },
+    "./react": {
+      "types": "./lib/typescript/react.d.ts",
+      "react-native": "./react.ts",
+      "import": "./lib/module/react.mjs",
+      "require": "./lib/commonjs/react.cjs",
+      "default": "./lib/module/react.mjs"
+    },
+    "./expo": {
+      "types": "./lib/typescript/expo.d.ts",
+      "react-native": "./expo.ts",
+      "import": "./lib/module/expo.mjs",
+      "require": "./lib/commonjs/expo.cjs",
+      "default": "./lib/module/expo.mjs"
+    },
+    "./plugins": {
+      "types": "./lib/typescript/plugins.d.ts",
+      "react-native": "./plugins.ts",
+      "import": "./lib/module/plugins.mjs",
+      "require": "./lib/commonjs/plugins.cjs",
+      "default": "./lib/module/plugins.mjs"
+    },
+    "./performance": {
+      "types": "./lib/typescript/performance.d.ts",
+      "react-native": "./performance.ts",
+      "import": "./lib/module/performance.mjs",
+      "require": "./lib/commonjs/performance.cjs",
+      "default": "./lib/module/performance.mjs"
+    },
+    "./sentry": {
+      "types": "./lib/typescript/sentry.d.ts",
+      "react-native": "./sentry.ts",
+      "import": "./lib/module/sentry.mjs",
+      "require": "./lib/commonjs/sentry.cjs",
+      "default": "./lib/module/sentry.mjs"
+    },
+    "./release-profiler": {
+      "types": "./lib/typescript/release-profiler.d.ts",
+      "react-native": "./release-profiler.ts",
+      "import": "./lib/module/release-profiler.mjs",
+      "require": "./lib/commonjs/release-profiler.cjs",
+      "default": "./lib/module/release-profiler.mjs"
+    },
+    "./package.json": "./package.json"
   }
 }

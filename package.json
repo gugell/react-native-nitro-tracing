@@ -1,0 +1,15 @@
+{
+  "name": "nitro-tracing-workspace",
+  "private": true,
+  "packageManager": "pnpm@9.12.3",
+  "scripts": {
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm --filter react-native-nitro-tracing test",
+    "test:native": "pnpm --filter react-native-nitro-tracing test:native",
+    "codegen": "pnpm --filter react-native-nitro-tracing nitrogen",
+    "example": "pnpm --dir apps/example"
+  },
+  "devDependencies": {
+    "prettier": "^3.8.3"
+  }
+}

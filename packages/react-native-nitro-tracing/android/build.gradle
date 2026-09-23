@@ -1,0 +1,140 @@
+buildscript {
+  repositories {
+    google()
+    mavenCentral()
+  }
+
+  dependencies {
+    classpath "com.android.tools.build:gradle:9.2.1"
+  }
+}
+
+def reactNativeArchitectures() {
+  def value = rootProject.getProperties().get("reactNativeArchitectures")
+  return value ? value.split(",") : ["armeabi-v7a", "x86", "x86_64", "arm64-v8a"]
+}
+
+def isNewArchitectureEnabled() {
+  return rootProject.hasProperty("newArchEnabled") && rootProject.getProperty("newArchEnabled") == "true"
+}
+
+apply plugin: "com.android.library"
+apply plugin: 'org.jetbrains.kotlin.android'
+apply from: '../nitrogen/generated/android/NitroTracing+autolinking.gradle'
+apply from: "./fix-prefab.gradle"
+
+def getExtOrDefault(name) {
+  return rootProject.ext.has(name) ? rootProject.ext.get(name) : project.properties["NitroTracing_" + name]
+}
+
+def getExtOrIntegerDefault(name) {
+  return rootProject.ext.has(name) ? rootProject.ext.get(name) : (project.properties["NitroTracing_" + name]).toInteger()
+}
+
+android {
+  namespace "com.margelo.nitro.nitrotracing"
+
+  ndkVersion getExtOrDefault("ndkVersion")
+  compileSdkVersion getExtOrIntegerDefault("compileSdkVersion")
+
+  defaultConfig {
+    minSdkVersion getExtOrIntegerDefault("minSdkVersion")
+    targetSdkVersion getExtOrIntegerDefault("targetSdkVersion")
+    buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", isNewArchitectureEnabled().toString()
+
+    externalNativeBuild {
+      cmake {
+        cppFlags "-frtti -fexceptions -Wall -Wextra -fstack-protector-all"
+        arguments "-DANDROID_STL=c++_shared", "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
+        abiFilters (*reactNativeArchitectures())
+
+        buildTypes {
+          debug {
+            cppFlags "-O1 -g"
+          }
+          release {
+            cppFlags "-O2"
+          }
+        }
+      }
+    }
+  }
+
+  externalNativeBuild {
+    cmake {
+      path "CMakeLists.txt"
+    }
+  }
+
+  packagingOptions {
+    excludes = [
+            "META-INF",
+            "META-INF/**",
+            "**/libc++_shared.so",
+            "**/libNitroModules.so",
+            "**/libfbjni.so",
+            "**/libjsi.so",
+            "**/libfolly_json.so",
+            "**/libfolly_runtime.so",
+            "**/libglog.so",
+            "**/libhermes.so",
+            "**/libhermes-executor-debug.so",
+            "**/libhermes_executor.so",
+            "**/libreactnative.so",
+            "**/libreactnativejni.so",
+            "**/libturbomodulejsijni.so",
+            "**/libreact_nativemodule_core.so",
+            "**/libjscexecutor.so"
+    ]
+  }
+
+  buildFeatures {
+    buildConfig true
+    prefab true
+  }
+
+  buildTypes {
+    release {
+      minifyEnabled false
+    }
+  }
+
+  lintOptions {
+    disable "GradleCompatible"
+  }
+
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_1_8
+    targetCompatibility JavaVersion.VERSION_1_8
+  }
+
+}
+
+repositories {
+  mavenCentral()
+  google()
+}
+
+
+dependencies {
+  // React Native is provided by the consuming app. Keeping this compileOnly
+  // prevents this library AAR from dexing RN classes a second time in release.
+  compileOnly "com.facebook.react:react-android"
+
+  // NitroModules is provided by the consuming app. Keeping this compileOnly
+  // avoids bundling NitroModules' runtime graph, including react-android, into
+  // this library AAR during release dexing.
+  compileOnly project(":react-native-nitro-modules")
+
+  implementation "androidx.work:work-runtime-ktx:2.9.1"
+  implementation "com.squareup.okhttp3:okhttp:4.12.0"
+  implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1"
+
+  testImplementation "junit:junit:4.13.2"
+  testImplementation "org.robolectric:robolectric:4.13"
+  testImplementation "androidx.test:core:1.6.1"
+  testImplementation "androidx.work:work-testing:2.9.1"
+  testImplementation "com.squareup.okhttp3:mockwebserver:4.12.0"
+  testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1"
+  testImplementation "org.json:json:20240303"
+}

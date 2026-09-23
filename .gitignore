@@ -1,0 +1,11 @@
+node_modules/
+.worktrees/
+**/build/
+**/.cxx/
+**/.gradle/
+**/.expo/
+**/lib/
+apps/*/android/
+apps/*/ios/
+*.tgz
+.DS_Store

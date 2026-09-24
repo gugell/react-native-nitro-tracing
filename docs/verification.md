@@ -30,3 +30,7 @@ On iPhone 17 Pro / iOS 26.5:
 - CPU profile symbolication and in-app flamegraphs are not implemented. Sentry native-only telemetry and web/server analytics are not mirrored.
 - Playground checks six focused behaviors; it is not a complete destructive lifecycle/overflow scenario matrix. Host/unit tests cover additional lifecycle and retention behavior.
 - Publication has not occurred. Choose final package/repository metadata and confirm ownership before a registry release.
+
+## Explorer 0.2.0 (2026-09-24)
+
+Build, package/example TypeScript and all 50 tests passed. Coverage includes filter combinations, correlation grouping, stable sorting, hierarchy cycles/collapse and snapshots above 3,000 retained events. Read-only reviews prompted fixes for mark Similar navigation, metric/detail scroll restoration, queued updates, timeline alignment and eviction notices. The independent example uses safe-area-context 5.7 with a stable root provider and Expo status bar handling. App integration passed all 236 tests and TypeScript; lint has zero errors. Pixel dev-client loading and new screen presence were confirmed; full interaction checks remain pending due concurrent device navigation. The standalone sample was typechecked but not rebuilt on device.

@@ -174,3 +174,13 @@ Pass `autoProfile: true` together with a `profiler` to `createTraceClient` to st
 Pass an optional `sink(line, entry)` to `createTraceClient` to retain formatted app logs and structured breadcrumbs. It receives explicit trace calls and observed Performance entries; native/Sentry-imported events stay in the recording without being echoed back as breadcrumbs. Sink failures are reported and never change measured work. String metrics retain their original value in sink output; nonnumeric values appear as native marks. Native attributes are bounded string values; sink attributes keep their original primitive types.
 
 Retention is bounded: the compatibility facade retains up to 512 operation IDs, 64 marks and 64 emitted measure names per ID. Stopping a recording clears correlation state, so restarting cannot create spans across recording boundaries. Native event budgets may evict older history.
+
+### Core metrics
+
+Set `runtimeMetrics: true` on `createTraceClient` to collect foreground JS event-loop timer delay, frame-callback rate, maximum frame-callback gap and gap counts over 50 ms. Defaults to a one-second reporting window, with no per-frame native writes. `runtimeMetrics: { intervalMs: 2000, frames: false }` reduces collection. These measure JS scheduling, not native UI FPS/dropped frames or CPU utilization; background windows are discarded. Dev mode, sampling, logs and inspector rendering affect these values.
+
+`useAppReadyMetric(client, ready)` from `/react` records `app.ready.js` once after the consumer reports readiness and a frame callback runs. It uses the JS performance clock origin, excludes native process launch, and does not certify TTI, TTID or TTFD. A fresh client/launch is needed to measure again after clearing history.
+
+Metrics show the whole recording rather than the selected trace. Explicit samples remain native/exportable events; `duration:` series and outcome statistics are derived from retained spans in the viewer. Duration series include successful/error outcomes; cancelled/interrupted spans are counted separately. Latest, median, min, max and nearest-rank p95 use retained samples (charts show the most recent 40). Retention eviction can bias statistics. Missing data is not reported as zero.
+
+Next collectors: native frame deadlines and frozen frames, process memory, CPU utilization, native app-start/first/full display boundaries, and per-screen readiness. These are not inferred from JS callback rates.

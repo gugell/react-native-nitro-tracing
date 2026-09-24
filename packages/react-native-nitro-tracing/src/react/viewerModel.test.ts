@@ -98,3 +98,44 @@ it('caps work for deeply nested traces while retaining the visible hierarchy', (
   expect(rows[2999].depth).toBe(8)
   expect(parentReads).toBeLessThanOrEqual(spans.length * 9)
 })
+
+it('shows metrics across all correlations and computes retained-sample percentiles and outcomes', () => {
+  const { recordingMetrics, operationMetrics } = require('./viewerModel')
+  const data = page([
+    span({ correlationId: 'a', durationMs: 10 }),
+    span({ correlationId: 'b', durationMs: 30, outcome: 'error' }),
+    span({ correlationId: 'b', outcome: 'cancelled' }),
+    span({ outcome: 'interrupted' }),
+  ])
+  data.metrics = [
+    {
+      name: 'app.ready.js',
+      value: 500,
+      unit: 'ms',
+      correlationId: '',
+      attributes: [],
+      timestampMs: 0,
+      sequence: 10,
+    },
+  ]
+  const metrics = recordingMetrics(data)
+  expect(metrics[0]).toMatchObject({
+    name: 'app.ready.js (ms)',
+    latest: 500,
+    median: 500,
+    p95: 500,
+  })
+  expect(metrics[1]).toMatchObject({
+    retainedCount: 2,
+    min: 10,
+    median: 20,
+    p95: 30,
+  })
+  expect(operationMetrics(data.spans)[0]).toMatchObject({
+    count: 4,
+    errors: 1,
+    errorRate: 50,
+    cancelled: 1,
+    interrupted: 1,
+  })
+})

@@ -201,3 +201,25 @@ it('keeps tracing available when automatic sampling is unsupported', async () =>
   expect(client.getError()).toContain('unavailable')
   await client.dispose()
 })
+
+it('records app readiness once per client lifetime with an explicit JS clock boundary', async () => {
+  const client = createTraceClient({ performance: false })
+  client.reportAppReady()
+  await client.start()
+  client.reportAppReady()
+  client.reportAppReady()
+  const current = mockFactory.mock.results[0].value
+  expect(current.recordMetric).toHaveBeenCalledTimes(1)
+  expect(current.recordMetric).toHaveBeenCalledWith(
+    expect.objectContaining({
+      name: 'app.ready.js',
+      unit: 'ms',
+      value: expect.any(Number),
+    })
+  )
+  await client.stop()
+  await client.start()
+  client.reportAppReady()
+  expect(mockFactory.mock.results[1].value.recordMetric).not.toHaveBeenCalled()
+  await client.dispose()
+})

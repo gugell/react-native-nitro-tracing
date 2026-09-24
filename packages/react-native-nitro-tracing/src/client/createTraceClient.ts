@@ -1,4 +1,8 @@
 import {
+  createRuntimeMetricsPlugin,
+  type RuntimeMetricsOptions,
+} from '../plugins/runtimeMetrics'
+import {
   formatTracingEntry,
   type TracingEntry,
   type TracingSink,
@@ -21,6 +25,8 @@ export interface TraceClientOptions {
   sink?: TracingSink
   plugins?: TracePlugin[]
   performance?: false | PerformancePluginOptions
+  /** Opt in to foreground JS event-loop and frame-callback metrics. */
+  runtimeMetrics?: boolean | RuntimeMetricsOptions
   onError?: (error: unknown) => void
   recordingOptions?: Partial<RecordingOptions>
   share?: (recording: Recording) => Promise<void>
@@ -43,6 +49,7 @@ export interface TraceClientSnapshot {
 export function createTraceClient(options: TraceClientOptions = {}) {
   let recording: Recording | undefined
   let handle: PluginHandle | undefined
+  let readyReported = false
   let enabled = false
   let disposed = false
   let pending = 0
@@ -152,6 +159,12 @@ export function createTraceClient(options: TraceClientOptions = {}) {
           createPerformancePlugin(api, options.sink ? emit : undefined)
         )
       }
+      if (options.runtimeMetrics)
+        plugins.push(
+          createRuntimeMetricsPlugin(
+            options.runtimeMetrics === true ? {} : options.runtimeMetrics
+          )
+        )
       if (options.profiler) plugins.push(options.profiler)
       handle = startPlugins(recording, plugins, reportError)
     } catch (error) {
@@ -284,6 +297,17 @@ export function createTraceClient(options: TraceClientOptions = {}) {
     },
   }
   return {
+    /** Once per client lifetime: elapsed JS runtime clock at the app-defined ready signal. */
+    reportAppReady() {
+      if (readyReported || !enabled) return
+      readyReported = true
+      trace.metric('app.ready.js', globalThis.performance.now(), {
+        unit: 'ms',
+        source: 'app-readiness',
+        definition:
+          'JS clock origin to app ready signal; excludes native process launch',
+      })
+    },
     trace,
     start: () => enqueue(startCurrent),
     stop: () => enqueue(stopCurrent),

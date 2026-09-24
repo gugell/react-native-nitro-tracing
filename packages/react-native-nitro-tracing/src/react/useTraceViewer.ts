@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import type { TraceClient } from '../client/createTraceClient'
 import type { RecordingStats, TracePage } from '../types'
-import { groupTraces, metricSeries, waterfall } from './viewerModel'
+import {
+  groupTraces,
+  recordingMetrics,
+  operationMetrics,
+  waterfall,
+} from './viewerModel'
 const empty: TracePage = {
   spans: [],
   marks: [],
@@ -91,10 +96,8 @@ export const useTraceViewer = (client: TraceClient) => {
     page.spans.filter((span) => matches(span.correlationId))
   )
   const span = rows.find((row) => row.span.spanId === spanId)?.span
-  const metrics = metricSeries(
-    page.metrics.filter((metric) => matches(metric.correlationId))
-  )
-  const marks = page.marks.filter((mark) => matches(mark.correlationId))
+  const metrics = useMemo(() => recordingMetrics(page), [page])
+  const marks = page.marks
   const act = async (work: () => void | Promise<void>) => {
     try {
       await work()
@@ -144,6 +147,7 @@ export const useTraceViewer = (client: TraceClient) => {
     span,
     selectSpan,
     metrics: metrics.slice(0, 40),
+    operations: operationMetrics(page.spans).slice(0, 40),
     marks: marks.slice(0, 100),
     busy: snapshot.busy,
     start: () => void act(client.start),

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import {
   Modal,
   Pressable,
@@ -8,6 +8,8 @@ import {
   TextInput,
   View,
   SafeAreaView,
+  Platform,
+  StatusBar,
 } from 'react-native'
 
 import { useTraceViewer } from './useTraceViewer'
@@ -38,6 +40,33 @@ const Action = ({
     <Text style={styles.buttonText}>{label}</Text>
   </Pressable>
 )
+/** Collapsed content is unmounted to avoid rendering hidden charts and long lists. */
+const Section = ({
+  title,
+  children,
+  initiallyOpen = true,
+}: {
+  title: string
+  children: React.ReactNode
+  initiallyOpen?: boolean
+}) => {
+  const [expanded, setExpanded] = useState(initiallyOpen)
+  return (
+    <View style={styles.card}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        accessibilityLabel={title}
+        onPress={() => setExpanded((value) => !value)}
+      >
+        <Text style={styles.heading}>
+          {expanded ? '▾' : '▸'} {title}
+        </Text>
+      </Pressable>
+      {expanded && children}
+    </View>
+  )
+}
 export const TraceInspector = ({
   client,
   labels,
@@ -58,7 +87,7 @@ export const TraceInspector = ({
     >
       <SafeAreaView testID="trace-viewer" style={styles.root}>
         <View style={styles.header}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.eyebrow}>{t('eyebrow')}</Text>
             <Text style={styles.title}>{t('title')}</Text>
           </View>
@@ -68,10 +97,9 @@ export const TraceInspector = ({
             onPress={viewer.close}
           />
         </View>
-        <View style={styles.card}>
-          <Text style={styles.heading}>
-            {viewer.stats?.recording ? t('recording') : t('stopped')}
-          </Text>
+        <Section
+          title={viewer.stats?.recording ? t('recording') : t('stopped')}
+        >
           <Text style={styles.muted}>
             {t('counters', {
               events: viewer.stats?.eventCount ?? 0,
@@ -107,7 +135,7 @@ export const TraceInspector = ({
             />
           </View>
           <Text style={styles.muted}>{t('retention')}</Text>
-        </View>
+        </Section>
         <View style={styles.actions} accessibilityLabel={t('tabs')}>
           {(['overview', 'traces', 'metrics', 'playground'] as const).map(
             (tab) => (
@@ -135,47 +163,47 @@ export const TraceInspector = ({
           )}
           {viewer.tab === 'traces' && (
             <>
-              <Text style={styles.heading}>{t('traces')}</Text>
-              <TextInput
-                testID="trace-viewer-search"
-                style={styles.search}
-                placeholderTextColor="#9993b1"
-                placeholder={t('search')}
-                accessibilityLabel={t('search')}
-                value={viewer.query}
-                onChangeText={viewer.setQuery}
-              />
-              <ScrollView style={styles.traceList} nestedScrollEnabled>
-                {viewer.groups.map((group) => (
-                  <Pressable
-                    key={group.id}
-                    onPress={() => viewer.select(group.id)}
-                    style={[
-                      styles.trace,
-                      group.id === viewer.selectedId && styles.selected,
-                    ]}
-                  >
-                    <Text numberOfLines={1} style={styles.text}>
-                      {group.name}
-                    </Text>
-                    <Text numberOfLines={1} style={styles.muted}>
-                      {group.id}
-                    </Text>
-                    <Text style={group.errors ? styles.error : styles.muted}>
-                      {t('traceSummary', {
-                        duration: group.duration.toFixed(1),
-                        events: group.events,
-                        errors: group.errors,
-                      })}
-                    </Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
-              {!viewer.groups.length && (
-                <Text style={styles.muted}>{t('empty')}</Text>
-              )}
-              <Text style={styles.heading}>{t('waterfall')}</Text>
-              <View style={styles.card}>
+              <Section title={`${t('traces')} (${viewer.groups.length})`}>
+                <TextInput
+                  testID="trace-viewer-search"
+                  style={styles.search}
+                  placeholderTextColor="#9993b1"
+                  placeholder={t('search')}
+                  accessibilityLabel={t('search')}
+                  value={viewer.query}
+                  onChangeText={viewer.setQuery}
+                />
+                <ScrollView style={styles.traceList} nestedScrollEnabled>
+                  {viewer.groups.map((group) => (
+                    <Pressable
+                      key={group.id}
+                      onPress={() => viewer.select(group.id)}
+                      style={[
+                        styles.trace,
+                        group.id === viewer.selectedId && styles.selected,
+                      ]}
+                    >
+                      <Text numberOfLines={1} style={styles.text}>
+                        {group.name}
+                      </Text>
+                      <Text numberOfLines={1} style={styles.muted}>
+                        {group.id}
+                      </Text>
+                      <Text style={group.errors ? styles.error : styles.muted}>
+                        {t('traceSummary', {
+                          duration: group.duration.toFixed(1),
+                          events: group.events,
+                          errors: group.errors,
+                        })}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+                {!viewer.groups.length && (
+                  <Text style={styles.muted}>{t('empty')}</Text>
+                )}
+              </Section>
+              <Section title={`${t('waterfall')} (${viewer.rows.length})`}>
                 {viewer.rows.map(({ span, depth, offset, width }) => (
                   <Pressable
                     key={span.spanId}
@@ -206,10 +234,9 @@ export const TraceInspector = ({
                 {!viewer.rows.length && (
                   <Text style={styles.muted}>{t('noSpans')}</Text>
                 )}
-              </View>
+              </Section>
               {viewer.span && (
-                <View style={styles.card}>
-                  <Text style={styles.heading}>{viewer.span.name}</Text>
+                <Section key={viewer.span.spanId} title={viewer.span.name}>
                   <Text selectable style={styles.muted}>
                     {t('spanDetails', {
                       id: viewer.span.spanId,
@@ -220,16 +247,33 @@ export const TraceInspector = ({
                   <Text selectable style={styles.text}>
                     {JSON.stringify(viewer.span.attributes, null, 2)}
                   </Text>
-                </View>
+                </Section>
               )}
             </>
           )}
           {viewer.tab === 'metrics' && (
             <>
               <Text style={styles.heading}>{t('metrics')}</Text>
+              <Text style={styles.muted}>{t('metricsScope')}</Text>
+              {!viewer.metrics.length && (
+                <Text style={styles.muted}>{t('emptyMetrics')}</Text>
+              )}
               {viewer.metrics.map((series) => (
-                <View key={series.name} style={styles.card}>
-                  <Text style={styles.text}>{series.name}</Text>
+                <Section
+                  key={series.name}
+                  title={`${series.name} · ${series.latest.toFixed(1)}`}
+                  initiallyOpen={false}
+                >
+                  <Text style={styles.text}>
+                    {t('metricStats', {
+                      latest: series.latest.toFixed(1),
+                      median: series.median.toFixed(1),
+                      min: series.min.toFixed(1),
+                      max: series.peak.toFixed(1),
+                      p95: series.p95.toFixed(1),
+                      count: series.retainedCount,
+                    })}
+                  </Text>
                   <Text style={styles.muted}>
                     {t('metricWindow', {
                       displayed: series.samples.length,
@@ -260,17 +304,35 @@ export const TraceInspector = ({
                       .map((sample) => sample.value.toFixed(1))
                       .join(' · ')}
                   </Text>
-                </View>
+                </Section>
               ))}
+              <Section title={t('operations')} initiallyOpen={false}>
+                {viewer.operations.map((operation) => (
+                  <View key={operation.name}>
+                    <Text style={styles.text}>{operation.name}</Text>
+                    <Text style={styles.muted}>
+                      {t('operationStats', {
+                        ...operation,
+                        errorRate:
+                          operation.errorRate === undefined
+                            ? '—'
+                            : operation.errorRate.toFixed(1) + '%',
+                      })}
+                    </Text>
+                  </View>
+                ))}
+              </Section>
               {viewer.marks.length > 0 && (
-                <View style={styles.card}>
-                  <Text style={styles.heading}>{t('marks')}</Text>
+                <Section
+                  title={`${t('marks')} (${viewer.marks.length})`}
+                  initiallyOpen={false}
+                >
                   {viewer.marks.map((mark) => (
                     <Text key={mark.sequence} style={styles.muted}>
                       {mark.timestampMs.toFixed(1)} ms · {mark.name}
                     </Text>
                   ))}
-                </View>
+                </Section>
               )}
             </>
           )}
@@ -365,7 +427,11 @@ export const TraceInspector = ({
   )
 }
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#14111d' },
+  root: {
+    flex: 1,
+    backgroundColor: '#14111d',
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 0,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',

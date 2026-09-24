@@ -91,7 +91,17 @@ export const metricSeries = (metrics: MetricEvent[]) => {
     const samples = retained
       .sort((a, b) => a.timestampMs - b.timestampMs)
       .slice(-40)
+    const values = retained.map((sample) => sample.value).sort((a, b) => a - b)
     return {
+      latest: retained[retained.length - 1]?.value ?? 0,
+      median: values.length
+        ? (values[Math.floor((values.length - 1) / 2)] +
+            values[Math.ceil((values.length - 1) / 2)]) /
+          2
+        : 0,
+      min: values[0] ?? 0,
+      peak: values[values.length - 1] ?? 0,
+      p95: values[Math.max(0, Math.ceil(values.length * 0.95) - 1)] ?? 0,
       name,
       samples,
       retainedCount: retained.length,
@@ -100,4 +110,46 @@ export const metricSeries = (metrics: MetricEvent[]) => {
       max: Math.max(1, ...samples.map((sample) => Math.abs(sample.value))),
     }
   })
+}
+
+/** Durations are derived from retained completed spans, not additional native samples. */
+export const recordingMetrics = (page: TracePage) =>
+  metricSeries([
+    ...page.metrics,
+    ...page.spans
+      .filter((span) => span.outcome === 'success' || span.outcome === 'error')
+      .map((span) => ({
+        ...span,
+        name: `duration: ${span.name}`,
+        value: span.durationMs,
+        unit: 'ms',
+      })),
+  ])
+
+export const operationMetrics = (spans: SpanEvent[]) => {
+  const groups = new Map<string, SpanEvent[]>()
+  for (const span of spans) {
+    const group = groups.get(span.name) ?? []
+    group.push(span)
+    groups.set(span.name, group)
+  }
+  return [...groups]
+    .map(([name, samples]) => {
+      const completed = samples.filter(
+        (s) => s.outcome === 'success' || s.outcome === 'error'
+      )
+      return {
+        name,
+        count: samples.length,
+        errors: completed.filter((s) => s.outcome === 'error').length,
+        errorRate: completed.length
+          ? (completed.filter((s) => s.outcome === 'error').length /
+              completed.length) *
+            100
+          : undefined,
+        cancelled: samples.filter((s) => s.outcome === 'cancelled').length,
+        interrupted: samples.filter((s) => s.outcome === 'interrupted').length,
+      }
+    })
+    .sort((a, b) => b.count - a.count)
 }

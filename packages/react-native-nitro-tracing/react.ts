@@ -5,3 +5,5 @@ export type {
   InspectorTranslator,
   InspectorLabelKey,
 } from './src/react/labels'
+
+export { useAppReadyMetric } from './src/react/useAppReadyMetric'

@@ -20,6 +20,15 @@ export const defaultLabels = {
   noSpans: 'No completed spans in this trace.',
   spanDetails: 'Span {{id}} \u00b7 parent {{parent}} \u00b7 {{outcome}}',
   metrics: 'Metrics',
+  operations: 'Operation outcomes',
+  operationStats:
+    '{{count}} spans · {{errors}} errors · {{errorRate}} error rate · {{cancelled}} cancelled · {{interrupted}} interrupted',
+  metricsScope:
+    'All traces · duration: series are derived from completed spans. Statistics cover retained samples, not the whole session.',
+  emptyMetrics:
+    'No samples yet. Use the app or run the playground. App-ready timing appears after a fresh launch; TTI requires an explicit readiness definition.',
+  metricStats:
+    'Latest {{latest}} · median {{median}} · min {{min}} · max {{max}} · p95 {{p95}} · {{count}} samples',
   marks: 'Marks',
   playground: 'Instrumentation playground',
   playgroundDescription:

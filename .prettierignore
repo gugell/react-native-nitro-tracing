@@ -7,3 +7,5 @@ apps/example/android
 **/build
 **/.cxx
 .worktrees
+artifacts
+CHANGELOG.md

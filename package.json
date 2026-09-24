@@ -1,16 +1,90 @@
 {
   "name": "nitro-tracing-workspace",
   "private": true,
+  "version": "0.5.7",
   "packageManager": "pnpm@9.12.3",
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "scripts": {
+    "build": "pnpm --filter react-native-nitro-tracing build",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm --filter react-native-nitro-tracing test",
     "test:native": "pnpm --filter react-native-nitro-tracing test:native",
+    "test:sentry": "pnpm --filter react-native-nitro-tracing test:sentry",
     "codegen": "pnpm --filter react-native-nitro-tracing nitrogen",
-    "example": "pnpm --dir apps/example",
-    "build": "pnpm --filter react-native-nitro-tracing build"
+    "codegen:check": "pnpm codegen && git diff --exit-code -- packages/react-native-nitro-tracing/nitrogen",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "format:native:check": "bash ./scripts/check-native-format.sh",
+    "release:check": "bash ./scripts/check-release-script.sh",
+    "check": "pnpm build && pnpm typecheck && pnpm test && pnpm test:native && pnpm test:sentry && pnpm format:check && pnpm format:native:check && pnpm release:check",
+    "pack:check": "node scripts/pack-check.mjs",
+    "release": "bash ./scripts/release.sh",
+    "release:dry-run": "bash ./scripts/release.sh --dry-run",
+    "example": "pnpm --dir apps/example"
   },
   "devDependencies": {
-    "prettier": "^3.8.3"
+    "@release-it/bumper": "^7.0.6",
+    "@release-it/conventional-changelog": "^11.0.1",
+    "cross-spawn": "^7.0.6",
+    "prettier": "^3.8.3",
+    "release-it": "20.2.1"
+  },
+  "release-it": {
+    "npm": {
+      "publish": false
+    },
+    "git": {
+      "requireBranch": "main",
+      "requireUpstream": true,
+      "requireCleanWorkingDir": false,
+      "commitMessage": "chore: release v${version}",
+      "tagName": "v${version}",
+      "addUntrackedFiles": true
+    },
+    "github": {
+      "release": true,
+      "releaseName": "v${version}"
+    },
+    "plugins": {
+      "@release-it/bumper": {
+        "out": [
+          {
+            "file": "packages/react-native-nitro-tracing/package.json",
+            "path": "version"
+          }
+        ]
+      },
+      "@release-it/conventional-changelog": {
+        "preset": {
+          "name": "conventionalcommits",
+          "types": [
+            {
+              "type": "feat",
+              "section": "Features"
+            },
+            {
+              "type": "fix",
+              "section": "Bug Fixes"
+            },
+            {
+              "type": "perf",
+              "section": "Performance"
+            },
+            {
+              "type": "docs",
+              "section": "Documentation"
+            },
+            {
+              "type": "chore(deps)",
+              "section": "Dependencies"
+            }
+          ]
+        },
+        "infile": "packages/react-native-nitro-tracing/CHANGELOG.md",
+        "header": "# Changelog"
+      }
+    }
   }
 }

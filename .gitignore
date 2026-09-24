@@ -9,3 +9,6 @@ apps/*/android/
 apps/*/ios/
 *.tgz
 .DS_Store
+
+# Release tarballs
+artifacts/

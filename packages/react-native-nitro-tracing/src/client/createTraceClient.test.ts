@@ -120,7 +120,7 @@ it('freezes native history before invoking the configured sharing adapter', asyn
   const client = createTraceClient({ performance: false, share })
   await client.start()
   await client.export()
-  expect(share).toHaveBeenCalledWith(client.getRecording())
+  expect(share).toHaveBeenCalledWith(client.getRecording(), 'recording')
   expect(client.getSnapshot().recording).toBe(false)
   await client.dispose()
 })

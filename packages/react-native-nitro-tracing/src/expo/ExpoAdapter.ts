@@ -1,6 +1,6 @@
 import * as FileSystem from 'expo-file-system/legacy'
 import * as Sharing from 'expo-sharing'
-import type { TraceClient } from '../client/createTraceClient'
+import type { TraceClient, TraceFormat } from '../client/createTraceClient'
 import type { Recording } from '../specs/Recording.nitro'
 export interface ExpoSharingOptions {
   dialogTitle?: string
@@ -16,14 +16,20 @@ export function createExpoTraceSharing(options: ExpoSharingOptions = {}) {
     })
   }
   return {
-    async share(recording: Recording) {
+    async share(recording: Recording, format: TraceFormat = 'recording') {
       if (!FileSystem.cacheDirectory)
         throw new Error('Application cache is unavailable')
-      const uri = `${FileSystem.cacheDirectory}native-trace-${
+      const prefix = format === 'perfetto' ? 'perfetto-trace' : 'native-trace'
+      const uri = `${FileSystem.cacheDirectory}${prefix}-${
         recording.getStats().sessionId
       }-${Date.now()}.json`
+      // Both formats serialize off the JS thread; only the finished string crosses JSI.
+      const json =
+        format === 'perfetto'
+          ? await recording.exportTraceEvents()
+          : await recording.exportJson()
       try {
-        await FileSystem.writeAsStringAsync(uri, await recording.exportJson(), {
+        await FileSystem.writeAsStringAsync(uri, json, {
           encoding: FileSystem.EncodingType.UTF8,
         })
         await shareFile(uri, 'application/json')

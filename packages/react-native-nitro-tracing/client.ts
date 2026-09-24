@@ -4,6 +4,7 @@ export type {
   TraceClientOptions,
   TraceClientSnapshot,
   ClientAttributes,
+  TraceFormat,
 } from './src/client/createTraceClient'
 
 export type {

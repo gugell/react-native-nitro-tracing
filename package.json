@@ -15,7 +15,7 @@
     "codegen": "pnpm --filter react-native-nitro-tracing nitrogen",
     "codegen:check": "pnpm codegen && git diff --exit-code -- packages/react-native-nitro-tracing/nitrogen",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format:check": "git ls-files -z | xargs -0 prettier --check --ignore-unknown",
     "format:native:check": "bash ./scripts/check-native-format.sh",
     "release:check": "bash ./scripts/check-release-script.sh",
     "check": "pnpm build && pnpm typecheck && pnpm test && pnpm test:native && pnpm test:sentry && pnpm format:check && pnpm format:native:check && pnpm release:check",

@@ -125,7 +125,18 @@ for package in packages/*; do
   (cd "$package" && pnpm exec release-it ${positional[@]+"${positional[@]}"} ${flags[@]+"${flags[@]}"} ${offline[@]+"${offline[@]}"})
 done
 
+# An initial release (--no-increment) publishes a changelog written by hand: the
+# history before it was not in conventional commits. Keep that section, and use
+# it as the GitHub release notes instead of regenerating from the commits.
+initial=()
+if [ "$no_increment" = true ]; then
+  initial=(
+    "--plugins.@release-it/conventional-changelog.infile="
+    "--github.releaseNotes=node scripts/release-notes.mjs $version"
+  )
+fi
+
 echo "Creating the version bump commit, tag and GitHub release"
-pnpm exec release-it ${positional[@]+"${positional[@]}"} ${flags[@]+"${flags[@]}"} ${offline[@]+"${offline[@]}"}
+pnpm exec release-it ${positional[@]+"${positional[@]}"} ${flags[@]+"${flags[@]}"} ${offline[@]+"${offline[@]}"} ${initial[@]+"${initial[@]}"}
 
 echo "Released react-native-nitro-tracing."

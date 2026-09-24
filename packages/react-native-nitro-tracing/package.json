@@ -1,7 +1,7 @@
 {
   "name": "react-native-nitro-tracing",
   "version": "0.6.0",
-  "description": "In-app performance tracing for React Native: native spans, frame and resource metrics, a live inspector and Perfetto export \u2014 for dev, custom and UAT builds",
+  "description": "In-app performance tracing for React Native: native spans, frame and resource metrics, a live inspector and Perfetto export — for dev, custom and UAT builds",
   "main": "lib/commonjs/index.cjs",
   "module": "lib/module/index.mjs",
   "types": "lib/typescript/src/index.d.ts",

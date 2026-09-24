@@ -39,6 +39,16 @@ export function InspectorHeader({
       { text: t('start'), style: 'destructive', onPress: v.start },
     ])
   const seconds = Math.round((v.stats?.nowMs ?? 0) / 1000)
+  // Say what is missing, not only how much: lost spans matter more than samples.
+  const lost = (
+    [
+      ['lostSpans', v.stats?.droppedSpans],
+      ['lostMarks', v.stats?.droppedMarks],
+      ['lostMetrics', v.stats?.droppedMetrics],
+    ] as const
+  )
+    .filter(([, count]) => (count ?? 0) > 0)
+    .map(([key, count]) => t(key, { count }))
   const newEvents = v.pending
     ? Math.max(0, v.pending.nextSequence - v.page.nextSequence)
     : 0
@@ -116,9 +126,9 @@ export function InspectorHeader({
         {v.screen ? ` · ${v.screen}` : ''}
         {v.paused ? ` · ${t('frozen')}` : ''}
       </Text>
-      {(v.stats?.droppedEvents ?? 0) > 0 && (
+      {lost.length > 0 && (
         <Text style={styles.warning}>
-          {t('lostHistory', { count: v.stats!.droppedEvents })}
+          {t('lostHistory', { what: lost.join(', ') })}
         </Text>
       )}
       {v.error && (

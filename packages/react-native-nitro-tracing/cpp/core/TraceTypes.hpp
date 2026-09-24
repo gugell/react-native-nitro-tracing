@@ -46,6 +46,8 @@ struct Stats {
   size_t retainedBytes;
   uint64_t droppedEvents;
   size_t activeSpans;
+  /** droppedEvents by kind, so a UI can say what history is missing. */
+  uint64_t droppedSpans = 0, droppedMarks = 0, droppedMetrics = 0;
 };
 struct Page {
   std::vector<Event> events;

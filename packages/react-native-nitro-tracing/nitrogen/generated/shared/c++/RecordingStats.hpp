@@ -47,10 +47,13 @@ namespace margelo::nitro::nitrotracing {
     double retainedBytes     SWIFT_PRIVATE;
     double droppedEvents     SWIFT_PRIVATE;
     double activeSpans     SWIFT_PRIVATE;
+    double droppedSpans     SWIFT_PRIVATE;
+    double droppedMarks     SWIFT_PRIVATE;
+    double droppedMetrics     SWIFT_PRIVATE;
 
   public:
     RecordingStats() = default;
-    explicit RecordingStats(std::string sessionId, double startedAtUnixMs, double nowMs, bool recording, double eventCount, double retainedBytes, double droppedEvents, double activeSpans): sessionId(sessionId), startedAtUnixMs(startedAtUnixMs), nowMs(nowMs), recording(recording), eventCount(eventCount), retainedBytes(retainedBytes), droppedEvents(droppedEvents), activeSpans(activeSpans) {}
+    explicit RecordingStats(std::string sessionId, double startedAtUnixMs, double nowMs, bool recording, double eventCount, double retainedBytes, double droppedEvents, double activeSpans, double droppedSpans, double droppedMarks, double droppedMetrics): sessionId(sessionId), startedAtUnixMs(startedAtUnixMs), nowMs(nowMs), recording(recording), eventCount(eventCount), retainedBytes(retainedBytes), droppedEvents(droppedEvents), activeSpans(activeSpans), droppedSpans(droppedSpans), droppedMarks(droppedMarks), droppedMetrics(droppedMetrics) {}
 
   public:
     friend bool operator==(const RecordingStats& lhs, const RecordingStats& rhs) = default;
@@ -73,7 +76,10 @@ namespace margelo::nitro {
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "eventCount"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "retainedBytes"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "droppedEvents"))),
-        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "activeSpans")))
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "activeSpans"))),
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "droppedSpans"))),
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "droppedMarks"))),
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "droppedMetrics")))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitrotracing::RecordingStats& arg) {
@@ -86,6 +92,9 @@ namespace margelo::nitro {
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "retainedBytes"), JSIConverter<double>::toJSI(runtime, arg.retainedBytes));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "droppedEvents"), JSIConverter<double>::toJSI(runtime, arg.droppedEvents));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "activeSpans"), JSIConverter<double>::toJSI(runtime, arg.activeSpans));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "droppedSpans"), JSIConverter<double>::toJSI(runtime, arg.droppedSpans));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "droppedMarks"), JSIConverter<double>::toJSI(runtime, arg.droppedMarks));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "droppedMetrics"), JSIConverter<double>::toJSI(runtime, arg.droppedMetrics));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -104,6 +113,9 @@ namespace margelo::nitro {
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "retainedBytes")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "droppedEvents")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "activeSpans")))) return false;
+      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "droppedSpans")))) return false;
+      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "droppedMarks")))) return false;
+      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "droppedMetrics")))) return false;
       return true;
     }
   };

@@ -36,7 +36,8 @@ tracingcore::Outcome toCore(SpanOutcome o) {
 RecordingStats toNative(const tracingcore::Stats &s) {
   return RecordingStats(s.sessionId, s.startedAtUnixMs, s.nowMs, s.recording, static_cast<double>(s.eventCount),
                         static_cast<double>(s.retainedBytes), static_cast<double>(s.droppedEvents),
-                        static_cast<double>(s.activeSpans));
+                        static_cast<double>(s.activeSpans), static_cast<double>(s.droppedSpans),
+                        static_cast<double>(s.droppedMarks), static_cast<double>(s.droppedMetrics));
 }
 TracePage toNative(const tracingcore::Page &page) {
   TracePage p;

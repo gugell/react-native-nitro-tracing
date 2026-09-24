@@ -40,4 +40,4 @@ Verified on an iPhone 13 Pro Max and a Pixel 7a (dev builds), through a producti
 - [x] Summary topic headlines use formatted units.
 - [x] Fix the example app's profiler race on Fast Refresh (profiling is on demand now).
 - [ ] Android native tabs with image icons, if a host opts into a MaterialComponents theme.
-- [ ] Track which trace sources were rejected, so "events dropped" says what was lost.
+- [x] Say what was lost: stats split `droppedEvents` into spans, marks and metric samples, and the inspector names them.

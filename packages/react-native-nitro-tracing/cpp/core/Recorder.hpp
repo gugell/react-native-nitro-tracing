@@ -45,6 +45,8 @@ private:
   size_t bytes_ = 0;
   size_t metrics_ = 0;
   uint64_t token_ = 0, sequence_ = 0, dropped_ = 0;
+  uint64_t droppedSpans_ = 0, droppedMarks_ = 0, droppedMetrics_ = 0;
+  void drop(const Event &e);
   bool recording_ = true;
   double now() const;
   void requireRecording() const;

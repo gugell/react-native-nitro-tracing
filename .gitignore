@@ -12,3 +12,6 @@ apps/*/ios/
 
 # Release tarballs
 artifacts/
+
+# Editor settings
+.vscode/

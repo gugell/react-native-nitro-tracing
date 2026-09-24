@@ -1,3 +1,4 @@
+import type { TracingEntry } from '../client/TracingSink'
 import type performance from 'react-native-performance'
 import type { PerformanceObserver } from 'react-native-performance'
 import type { TracePlugin } from './TracePlugin'
@@ -10,7 +11,8 @@ export interface PerformancePluginOptions {
 }
 /** Observe user timing without patching globals, clearing shared buffers or timing network bodies. */
 export function createPerformancePlugin(
-  api: PerformancePluginOptions
+  api: PerformancePluginOptions,
+  onEntry?: (entry: TracingEntry) => void
 ): TracePlugin {
   return {
     id: 'performance',
@@ -29,6 +31,16 @@ export function createPerformancePlugin(
               value?: unknown
               detail?: { id?: unknown; unit?: unknown }
             }
+            onEntry?.({
+              name: entry.name,
+              entryType: entry.entryType,
+              durationMs: entry.duration,
+              value:
+                typeof data.value === 'string' || typeof data.value === 'number'
+                  ? data.value
+                  : undefined,
+              attributes: data.detail,
+            })
             const context = {
               name: entry.name.slice(0, 128),
               correlationId:

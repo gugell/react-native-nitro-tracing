@@ -166,3 +166,11 @@ MIT.
 ### Automatic development profiling
 
 Pass `autoProfile: true` together with a `profiler` to `createTraceClient` to start Hermes sampling on every recording. Stopping, exporting or disposing the recording stops sampling and saves its artifact. Sampling failure is reported without disabling traces. The default remains manual. Enable this explicitly in development; sampling adds overhead and continuous profiles grow until stopped. Use the inspector to stop and share a profile. Do not run another Hermes sampler concurrently.
+
+### Migrating an existing tracer
+
+`client.trace` supports `mark`, `metric`, `measure`, `measureSince` and `clear`. `measure` preserves the work's result or original error; disabled recording still executes the work. `measureSince` deduplicates by measure name and correlation ID, including when a start mark is repeated or another start name is supplied. Several differently named measures may share a start. `clear(id)` resets that operation.
+
+Pass an optional `sink(line, entry)` to `createTraceClient` to retain formatted app logs and structured breadcrumbs. It receives explicit trace calls and observed Performance entries; native/Sentry-imported events stay in the recording without being echoed back as breadcrumbs. Sink failures are reported and never change measured work. String metrics retain their original value in sink output; nonnumeric values appear as native marks. Native attributes are bounded string values; sink attributes keep their original primitive types.
+
+Retention is bounded: the compatibility facade retains up to 512 operation IDs, 64 marks and 64 emitted measure names per ID. Stopping a recording clears correlation state, so restarting cannot create spans across recording boundaries. Native event budgets may evict older history.

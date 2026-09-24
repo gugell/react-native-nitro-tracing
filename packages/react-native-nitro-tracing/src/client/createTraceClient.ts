@@ -1,3 +1,8 @@
+import {
+  formatTracingEntry,
+  type TracingEntry,
+  type TracingSink,
+} from './TracingSink'
 import type { Recording } from '../specs/Recording.nitro'
 import type { RecordingOptions } from '../types'
 import type { PerformancePluginOptions } from '../plugins/performance'
@@ -12,6 +17,8 @@ export type ClientAttributes = Record<
   string | number | boolean | undefined
 >
 export interface TraceClientOptions {
+  /** Optional app log/breadcrumb output; failures never affect measured work. */
+  sink?: TracingSink
   plugins?: TracePlugin[]
   performance?: false | PerformancePluginOptions
   onError?: (error: unknown) => void
@@ -48,7 +55,10 @@ export function createTraceClient(options: TraceClientOptions = {}) {
     profiling: false,
   }
   const listeners = new Set<() => void>()
-  const marks = new Map<string, { time: number; emitted: Set<string> }>()
+  const marks = new Map<
+    string,
+    { marks: Map<string, number>; emitted: Set<string> }
+  >()
   const publish = (next: Partial<TraceClientSnapshot> = {}) => {
     snapshot = {
       ...snapshot,
@@ -82,6 +92,10 @@ export function createTraceClient(options: TraceClientOptions = {}) {
       reportError(error)
       return undefined
     }
+  }
+  const emit = (entry: TracingEntry) => {
+    if (options.sink)
+      safely(() => options.sink!(formatTracingEntry(entry), entry))
   }
   const enqueue = (work: () => Promise<void>) => {
     if (disposed) return Promise.reject(new Error('Trace client is disposed'))
@@ -134,7 +148,9 @@ export function createTraceClient(options: TraceClientOptions = {}) {
               require('react-native-performance') as typeof import('react-native-performance')
             return { performance, PerformanceObserver }
           })()
-        plugins.unshift(createPerformancePlugin(api))
+        plugins.unshift(
+          createPerformancePlugin(api, options.sink ? emit : undefined)
+        )
       }
       if (options.profiler) plugins.push(options.profiler)
       handle = startPlugins(recording, plugins, reportError)
@@ -172,12 +188,17 @@ export function createTraceClient(options: TraceClientOptions = {}) {
       safely(() => {
         if (!enabled || !recording) return
         recording.mark(context(name, attributes))
+        emit({ name, entryType: 'mark', durationMs: 0, attributes })
         if (typeof attributes?.id === 'string') {
-          if (marks.size >= 512) marks.delete(marks.keys().next().value!)
-          marks.set(JSON.stringify([attributes.id, name]), {
-            time: recording.getStats().nowMs,
-            emitted: new Set(),
-          })
+          let bucket = marks.get(attributes.id)
+          if (!bucket) {
+            if (marks.size >= 512) marks.delete(marks.keys().next().value!)
+            bucket = { marks: new Map(), emitted: new Set() }
+            marks.set(attributes.id, bucket)
+          }
+          if (bucket.marks.size >= 64 && !bucket.marks.has(name))
+            bucket.marks.delete(bucket.marks.keys().next().value!)
+          bucket.marks.set(name, recording.getStats().nowMs)
         }
       })
     },
@@ -196,6 +217,7 @@ export function createTraceClient(options: TraceClientOptions = {}) {
             unit: String(attributes?.unit ?? 'count'),
           })
         else recording.mark(context(name, { ...attributes, value }))
+        emit({ name, entryType: 'metric', durationMs: 0, value, attributes })
       })
     },
     async measure<T>(
@@ -203,6 +225,8 @@ export function createTraceClient(options: TraceClientOptions = {}) {
       fn: () => Promise<T>,
       attributes?: ClientAttributes
     ): Promise<T> {
+      const started =
+        enabled && options.sink ? globalThis.performance.now() : undefined
       const span = safely(() =>
         enabled ? recording?.startSpan(context(name, attributes)) : undefined
       )
@@ -213,6 +237,14 @@ export function createTraceClient(options: TraceClientOptions = {}) {
       } catch (error) {
         safely(() => span?.end('error'))
         throw error
+      } finally {
+        if (started !== undefined)
+          emit({
+            name,
+            entryType: 'measure',
+            durationMs: Math.max(0, globalThis.performance.now() - started),
+            attributes,
+          })
       }
     },
     measureSince(
@@ -223,20 +255,32 @@ export function createTraceClient(options: TraceClientOptions = {}) {
     ) {
       safely(() => {
         if (!enabled || !recording) return
-        const mark = marks.get(JSON.stringify([id, startName]))
-        if (!mark || mark.emitted.has(name) || mark.emitted.size >= 64) return
-        mark.emitted.add(name)
+        const bucket = marks.get(id)
+        const start = bucket?.marks.get(startName)
+        if (
+          start === undefined ||
+          bucket!.emitted.has(name) ||
+          bucket!.emitted.size >= 64
+        )
+          return
+        bucket!.emitted.add(name)
+        const durationMs = Math.max(0, recording.getStats().nowMs - start)
         recording.recordSpan({
           ...context(name, { ...attributes, id, startName }),
-          timestampMs: mark.time,
-          durationMs: Math.max(0, recording.getStats().nowMs - mark.time),
+          timestampMs: start,
+          durationMs,
           outcome: 'success',
+        })
+        emit({
+          name,
+          entryType: 'measure',
+          durationMs,
+          attributes: { ...attributes, id },
         })
       })
     },
     clear(id: string) {
-      for (const key of marks.keys())
-        if (JSON.parse(key)[0] === id) marks.delete(key)
+      marks.delete(id)
     },
   }
   return {

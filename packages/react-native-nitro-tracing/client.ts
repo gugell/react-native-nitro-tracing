@@ -10,3 +10,5 @@ export type {
   PlaygroundReport,
   PlaygroundCheckId,
 } from './src/client/playground'
+
+export type { TracingEntry, TracingSink } from './src/client/TracingSink'

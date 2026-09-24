@@ -49,6 +49,7 @@ export interface TraceClientSnapshot {
 export function createTraceClient(options: TraceClientOptions = {}) {
   let recording: Recording | undefined
   let handle: PluginHandle | undefined
+  const readinessStartMs = globalThis.performance.now()
   let readyReported = false
   let enabled = false
   let disposed = false
@@ -297,16 +298,20 @@ export function createTraceClient(options: TraceClientOptions = {}) {
     },
   }
   return {
-    /** Once per client lifetime: elapsed JS runtime clock at the app-defined ready signal. */
+    /** Once per client lifetime: elapsed time from client creation to the app-defined ready signal. */
     reportAppReady() {
       if (readyReported || !enabled) return
       readyReported = true
-      trace.metric('app.ready.js', globalThis.performance.now(), {
-        unit: 'ms',
-        source: 'app-readiness',
-        definition:
-          'JS clock origin to app ready signal; excludes native process launch',
-      })
+      trace.metric(
+        'app.ready.after_tracer_init',
+        Math.max(0, globalThis.performance.now() - readinessStartMs),
+        {
+          unit: 'ms',
+          source: 'app-readiness',
+          definition:
+            'Tracer initialization to app ready signal; excludes earlier JS and native startup',
+        }
+      )
     },
     trace,
     start: () => enqueue(startCurrent),

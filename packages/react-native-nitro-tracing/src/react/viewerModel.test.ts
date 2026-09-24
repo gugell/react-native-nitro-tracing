@@ -109,7 +109,7 @@ it('shows metrics across all correlations and computes retained-sample percentil
   ])
   data.metrics = [
     {
-      name: 'app.ready.js',
+      name: 'app.ready.after_tracer_init',
       value: 500,
       unit: 'ms',
       correlationId: '',
@@ -120,7 +120,7 @@ it('shows metrics across all correlations and computes retained-sample percentil
   ]
   const metrics = recordingMetrics(data)
   expect(metrics[0]).toMatchObject({
-    name: 'app.ready.js (ms)',
+    name: 'app.ready.after_tracer_init (ms)',
     latest: 500,
     median: 500,
     p95: 500,

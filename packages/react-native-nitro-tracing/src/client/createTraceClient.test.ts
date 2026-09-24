@@ -202,8 +202,12 @@ it('keeps tracing available when automatic sampling is unsupported', async () =>
   await client.dispose()
 })
 
-it('records app readiness once per client lifetime with an explicit JS clock boundary', async () => {
+it('records app readiness once per client lifetime with an explicit client initialization boundary', async () => {
+  const clock = jest
+    .spyOn(globalThis.performance, 'now')
+    .mockReturnValue(1000000)
   const client = createTraceClient({ performance: false })
+  clock.mockReturnValue(1000320)
   client.reportAppReady()
   await client.start()
   client.reportAppReady()
@@ -212,14 +216,15 @@ it('records app readiness once per client lifetime with an explicit JS clock bou
   expect(current.recordMetric).toHaveBeenCalledTimes(1)
   expect(current.recordMetric).toHaveBeenCalledWith(
     expect.objectContaining({
-      name: 'app.ready.js',
+      name: 'app.ready.after_tracer_init',
       unit: 'ms',
-      value: expect.any(Number),
+      value: 320,
     })
   )
   await client.stop()
   await client.start()
   client.reportAppReady()
   expect(mockFactory.mock.results[1].value.recordMetric).not.toHaveBeenCalled()
+  clock.mockRestore()
   await client.dispose()
 })

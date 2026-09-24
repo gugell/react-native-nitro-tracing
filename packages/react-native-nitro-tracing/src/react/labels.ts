@@ -24,7 +24,7 @@ export const defaultLabels = {
   operationStats:
     '{{count}} spans · {{errors}} errors · {{errorRate}} error rate · {{cancelled}} cancelled · {{interrupted}} interrupted',
   metricsScope:
-    'All traces · duration: series are derived from completed spans. Statistics cover retained samples, not the whole session.',
+    'All traces · app.ready.after_tracer_init measures tracer setup to app readiness, not TTI. duration: series are derived from completed spans. Statistics cover retained samples, not the whole session.',
   emptyMetrics:
     'No samples yet. Use the app or run the playground. App-ready timing appears after a fresh launch; TTI requires an explicit readiness definition.',
   metricStats:

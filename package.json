@@ -1,7 +1,7 @@
 {
   "name": "nitro-tracing-workspace",
   "private": true,
-  "version": "0.5.7",
+  "version": "0.6.0",
   "packageManager": "pnpm@9.12.3",
   "engines": {
     "node": ">=22.13.0"

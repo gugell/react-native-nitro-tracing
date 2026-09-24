@@ -1,6 +1,6 @@
 # Status
 
-Snapshot: 2026-09-24, branch `inspector-topics`, package `0.5.7` (next release 0.6.0).
+Snapshot: 2026-09-24, branch `inspector-topics`, package `0.6.0` (unpublished; changelog written).
 
 Goal: in-app performance tooling that works in dev, custom and UAT builds. Trace, catch slowness, and export traces for Perfetto.
 

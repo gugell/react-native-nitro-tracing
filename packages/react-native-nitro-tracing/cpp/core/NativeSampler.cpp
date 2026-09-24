@@ -99,8 +99,8 @@ double NativeSampler::processMemoryBytes() {
 }
 
 NativeSampler::NativeSampler(std::shared_ptr<Recorder> recorder, double intervalMs, bool frames)
-    : recorder_(std::move(recorder)), intervalMs_(intervalMs),
-      frames_(frames && FrameMonitor::instance().acquire()), thread_([this] { run(); }) {}
+    : recorder_(std::move(recorder)), intervalMs_(intervalMs), frames_(frames && FrameMonitor::instance().acquire()),
+      thread_([this] { run(); }) {}
 NativeSampler::~NativeSampler() {
   {
     std::lock_guard lock(mutex_);

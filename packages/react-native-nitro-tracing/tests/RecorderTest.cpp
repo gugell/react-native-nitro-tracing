@@ -17,10 +17,11 @@ int main() {
       mixed.metric(ctx(), i, "count");
     auto page = mixed.read(0, 100);
     size_t marks = 0, metrics = 0;
-    for (auto& e : page.events)
+    for (auto &e : page.events)
       std::holds_alternative<MarkData>(e.data) ? ++marks : ++metrics;
     assert(marks == 4 && metrics == 5);
     assert(std::get<MetricData>(page.events.back().data).value == 49);
+    assert(page.droppedEvents == 0); // rolled samples are not lost history
   }
   double clock = 100;
   Recorder r({100, 1024 * 1024, 10, 1000}, [&] { return clock; });

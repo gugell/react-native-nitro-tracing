@@ -1,6 +1,6 @@
 {
   "name": "react-native-nitro-tracing",
-  "version": "0.5.6",
+  "version": "0.5.7",
   "description": "Bounded native performance recordings and explicit spans for React Native",
   "main": "lib/commonjs/index.cjs",
   "module": "lib/module/index.mjs",

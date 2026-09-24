@@ -1,10 +1,10 @@
 #include "TraceJson.hpp"
 #include <algorithm>
 #include <iomanip>
-#include <map>
-#include <vector>
 #include <locale>
+#include <map>
 #include <sstream>
+#include <vector>
 namespace margelo::nitro::tracingcore {
 namespace {
 void quote(std::ostream &o, const std::string &s) {

@@ -31,8 +31,8 @@ std::string Recorder::spanId(uint64_t token) const {
   return token == 0 ? "" : sessionId_ + ":" + std::to_string(token);
 }
 namespace {
-bool isMetric(const Event& e) { return std::holds_alternative<MetricData>(e.data); }
-}
+bool isMetric(const Event &e) { return std::holds_alternative<MetricData>(e.data); }
+} // namespace
 void Recorder::evict() {
   metrics_ -= isMetric(events_.front());
   bytes_ -= eventBytes(events_.front());
@@ -52,13 +52,13 @@ void Recorder::append(Event e) {
     return;
   }
   // Periodic samples may fill at most half the buffer, so they replace older samples
-  // instead of evicting spans and marks from long sessions.
+  // instead of evicting spans and marks from long sessions. Metric series are rolling
+  // windows by design, so replacing a sample does not count as lost history.
   if (isMetric(e) && metrics_ >= std::max<size_t>(1, config_.maxEvents / 2)) {
     const auto oldest = std::find_if(events_.begin(), events_.end(), isMetric);
     bytes_ -= eventBytes(*oldest);
     events_.erase(oldest);
     --metrics_;
-    ++dropped_;
   }
   while (!events_.empty() && events_.size() >= config_.maxEvents)
     evict();

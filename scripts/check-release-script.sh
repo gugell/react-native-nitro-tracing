@@ -66,12 +66,22 @@ run "release (empty flag arrays)" 9.9.9 --no-increment
 # version positionally as well makes release-it attempt a bump, and
 # `npm version 0.1.0` on a package already at 0.1.0 fails with
 # "Version not changed" — which is how this surfaced, mid-release.
-if calls | grep -q "9\.9\.9"; then
+# (The release-notes argument names the version on purpose; ignore it here.)
+if calls | sed 's/--github.releaseNotes=node scripts\/release-notes.mjs [^ ]*//' | grep -q "9\.9\.9"; then
   echo "release.sh passed a version positionally alongside --no-increment:" >&2
   calls >&2
   exit 1
 fi
 echo "    and did not pass a version positionally"
+# The initial release keeps the hand-written changelog: only the root pass may
+# disable the generated changelog, and it must take its notes from CHANGELOG.md.
+if [ "$(calls | grep -c -- "conventional-changelog.infile=")" -ne 1 ] ||
+  ! calls | grep -q -- "--github.releaseNotes=node scripts/release-notes.mjs 9.9.9"; then
+  echo "release.sh did not keep the hand-written changelog on the initial release:" >&2
+  calls >&2
+  exit 1
+fi
+echo "    and kept the hand-written changelog for the root pass"
 
 run "dry-run (populated flag arrays)" 9.9.9 --dry-run
 run "explicit increment" 9.9.9 minor

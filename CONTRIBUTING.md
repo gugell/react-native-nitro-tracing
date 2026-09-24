@@ -15,6 +15,6 @@ pnpm example ios  # or android: a development build of apps/example
 - **Verify native changes on devices.** Anything that touches `cpp/`, `ios/` or `android/` needs a native rebuild. Say what you ran it on, and record unavailable tooling explicitly.
 - **Keep entry points independent.** The root, `/client` and `/plugins` must not import UI or optional SDKs. Optional peers are required inside `try` so Metro treats them as optional.
 
-Use [conventional commit](https://www.conventionalcommits.org) messages (`feat(inspector): …`, `fix(native): …`); the changelog is generated from them (see [releasing](docs/releasing.md)). Keep implementation, tests and docs together in a focused pull request, and describe the user-visible problem, the behavior after the change, what you verified and what remains.
+Use [conventional commit](https://www.conventionalcommits.org) messages (`feat(inspector): …`, `fix(native): …`); the changelog is generated from them (see [releasing](docs/releasing.md)). Pull requests are merged with Rebase and merge, which keeps those commits. Keep implementation, tests and docs together in a focused pull request, and describe the user-visible problem, the behavior after the change, what you verified and what remains.
 
 Never commit credentials, and never publish as part of an ordinary contribution. Issues and pull requests: <https://github.com/gugell/react-native-nitro-tracing>.

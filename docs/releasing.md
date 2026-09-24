@@ -29,6 +29,8 @@ The changelog is generated from [conventional commits](https://www.conventionalc
 
 Scopes are optional, and the changelog groups by them: `native`, `client`, `plugins`, `inspector`, `example`. Commits of other types (`build`, `test`, `chore`) are released but not listed.
 
+Merge pull requests with **Rebase and merge**, so each conventional commit reaches `main`. A squash merge leaves one commit whose subject is the PR title. If you squash, give the PR a conventional title (`feat: …`), and accept that the changelog shows one line for the whole PR.
+
 ## How `pnpm release` works
 
 `scripts/release.sh` resolves **one** version from the conventional commits, or from an explicit increment, and runs release-it in two passes with it:
@@ -70,12 +72,12 @@ Graduate with an ordinary `pnpm release`. Do not pass a positional increment wit
 
 ## First publication
 
-The name is unclaimed on npm, and the manifest is at `0.5.7`. The commits since the start recommend a minor bump, so `pnpm release` publishes **0.6.0**. To publish exactly the manifest version instead, use `--no-increment` (workflow input `initial`).
+The manifests are at **0.6.0**, and `CHANGELOG.md` has a hand-written 0.6.0 section: the history before it was not in conventional commits, and #1 was squash-merged. Publish exactly that version with `--no-increment` (workflow input `initial`). On that path, `release.sh` keeps the hand-written changelog and uses its section as the GitHub release notes (`scripts/release-notes.mjs`). Later releases generate both from commits again.
 
 npm trusted publishing needs the package to exist, so the first publish is done once by hand:
 
 1. **Create the GitHub environment** named exactly `npm` (Settings → Environments). Add required reviewers if you want a human gate.
-2. **Publish once locally.** From a clean `main`, run `pnpm release` (or `pnpm release --no-increment`). npm prompts for your OTP; nothing is stored.
+2. **Publish once locally.** From a clean `main`, run `pnpm release --no-increment`. npm prompts for your OTP; nothing is stored.
 3. **Configure the trusted publisher** at `https://www.npmjs.com/package/react-native-nitro-tracing/access` → Trusted publishing → GitHub Actions. Enter the user `gugell`, the repository `react-native-nitro-tracing`, the workflow filename `release.yml` and the environment `npm`. npm does not validate these; a typo shows up only as a failed publish.
 4. **Lock it down**: "Require two-factor authentication and disallow tokens". From then on, OIDC is the only way to publish.
 

@@ -1,5 +1,5 @@
 {
-  "scenario": "Node host workload, 4500 retained marks, 30 polls, 4 added metrics per poll, 10 repetitions; excludes native scheduling and React rendering",
+  "scenario": "Node host workload, 4500 retained marks, 30 polls, 4 added events per poll, 10 repetitions; excludes native scheduling and React rendering",
   "results": {
     "before": {
       "convertedEvents": 136860,

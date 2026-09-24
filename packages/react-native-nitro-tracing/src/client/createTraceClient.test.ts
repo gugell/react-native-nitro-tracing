@@ -1,3 +1,4 @@
+import { createReleaseProfilerPlugin } from '../plugins/releaseProfiler'
 import { createTraceClient } from './createTraceClient'
 import type { Recording } from '../specs/Recording.nitro'
 const mockFactory = jest.fn()
@@ -163,4 +164,40 @@ it('cancels a queued start when the owner disposes immediately', async () => {
   await disposal
   expect(mockFactory).not.toHaveBeenCalled()
   expect(client.getSnapshot().recording).toBe(false)
+})
+
+it('automatically profiles recordings and saves on stop, then restarts cleanly', async () => {
+  const api = {
+    startProfiling: jest.fn(),
+    stopProfiling: jest.fn(async () => '/tmp/profile'),
+  }
+  const client = createTraceClient({
+    performance: false,
+    autoProfile: true,
+    profiler: createReleaseProfilerPlugin(api),
+  })
+  await client.start()
+  expect(client.getSnapshot().profiling).toBe(true)
+  await client.stop()
+  expect(api.stopProfiling).toHaveBeenCalledTimes(1)
+  expect(client.getSnapshot().profilePath).toBe('/tmp/profile')
+  await client.start()
+  expect(api.startProfiling).toHaveBeenCalledTimes(2)
+  await client.dispose()
+  expect(api.stopProfiling).toHaveBeenCalledTimes(2)
+})
+it('keeps tracing available when automatic sampling is unsupported', async () => {
+  const client = createTraceClient({
+    performance: false,
+    autoProfile: true,
+    profiler: createReleaseProfilerPlugin({
+      startProfiling: () => false,
+      stopProfiling: async () => '',
+    }),
+  })
+  await client.start()
+  expect(client.getSnapshot().recording).toBe(true)
+  expect(client.getSnapshot().profiling).toBe(false)
+  expect(client.getError()).toContain('unavailable')
+  await client.dispose()
 })

@@ -162,3 +162,7 @@ Before publishing, choose the final npm name and repository metadata, confirm ow
 Native builds and iOS simulator flows were checked; device overhead and Android UI remain to be validated. During development, dismiss the native share sheet before reloading JavaScript.
 
 MIT.
+
+### Automatic development profiling
+
+Pass `autoProfile: true` together with a `profiler` to `createTraceClient` to start Hermes sampling on every recording. Stopping, exporting or disposing the recording stops sampling and saves its artifact. Sampling failure is reported without disabling traces. The default remains manual. Enable this explicitly in development; sampling adds overhead and continuous profiles grow until stopped. Use the inspector to stop and share a profile. Do not run another Hermes sampler concurrently.

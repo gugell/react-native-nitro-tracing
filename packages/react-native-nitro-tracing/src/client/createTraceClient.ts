@@ -18,6 +18,8 @@ export interface TraceClientOptions {
   recordingOptions?: Partial<RecordingOptions>
   share?: (recording: Recording) => Promise<void>
   shareProfile?: (path: string) => Promise<void>
+  /** Start Hermes sampling with each recording; stopped and saved with it. */
+  autoProfile?: boolean
   profiler?: ReleaseProfilerPlugin
 }
 export interface TraceClientSnapshot {
@@ -150,6 +152,8 @@ export function createTraceClient(options: TraceClientOptions = {}) {
       throw error
     }
     enabled = true
+    if (options.autoProfile && options.profiler)
+      safely(() => options.profiler!.startProfiling())
     publish()
   }
   const context = (name: string, attributes?: ClientAttributes) => ({

@@ -162,3 +162,7 @@ Before publishing, choose the final npm name and repository metadata, confirm ow
 See [verification notes](docs/verification.md) in the repository for the tested platform matrix and known limitations.
 
 MIT.
+
+### Automatic development profiling
+
+Pass `autoProfile: true` together with a `profiler` to `createTraceClient` to start Hermes sampling on every recording. Stopping, exporting or disposing the recording stops sampling and saves its artifact. Sampling failure is reported without disabling traces. The default remains manual. Enable this explicitly in development; sampling adds overhead and continuous profiles grow until stopped. Use the inspector to stop and share a profile. Do not run another Hermes sampler concurrently.

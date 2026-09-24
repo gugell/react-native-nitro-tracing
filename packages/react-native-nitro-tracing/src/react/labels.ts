@@ -72,8 +72,10 @@ export const defaultLabels = {
     'Start a new recording and discard the currently retained history. Export first to keep a copy.',
   retainedScope:
     'Counts and statistics cover retained history. Pause updates freezes this view, not recording or profiling.',
-  lostHistory:
-    '{{count}} events dropped or rejected; this history is incomplete.',
+  lostHistory: 'Lost {{what}}; this history is incomplete.',
+  lostSpans: '{{count}} spans',
+  lostMarks: '{{count}} marks',
+  lostMetrics: '{{count}} metric samples',
   slowest: 'Slowest spans',
   errorsOnly: 'Errors',
   profileSeparate:

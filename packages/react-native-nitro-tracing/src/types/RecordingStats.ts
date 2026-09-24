@@ -16,4 +16,10 @@ export interface RecordingStats {
   droppedEvents: number
   /** Open spans. */
   activeSpans: number
+  /** Evicted or rejected spans (part of droppedEvents). */
+  droppedSpans: number
+  /** Evicted or rejected marks (part of droppedEvents). */
+  droppedMarks: number
+  /** Evicted or rejected metric samples; rolled-over samples are not counted. */
+  droppedMetrics: number
 }

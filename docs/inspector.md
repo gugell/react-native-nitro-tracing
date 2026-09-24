@@ -54,7 +54,7 @@ Metrics cover the whole recording, not the selected trace. Statistics use retain
 
 While you scroll or read a detail, new events queue instead of moving the list. The **N new events** banner applies them. **Freeze view** holds the displayed snapshot; recording continues. Only new events cross the bridge on each poll.
 
-If the header shows **N events dropped**, spans or marks were evicted and the history is incomplete. Metric samples roll over by design and are not counted.
+If the header says **Lost 12 spans, 3 marks**, those events were evicted or rejected and the history is incomplete. Metric samples roll over by design and are not counted as lost.
 
 ## Budgets
 

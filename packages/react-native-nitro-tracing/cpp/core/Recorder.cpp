@@ -33,11 +33,20 @@ std::string Recorder::spanId(uint64_t token) const {
 namespace {
 bool isMetric(const Event &e) { return std::holds_alternative<MetricData>(e.data); }
 } // namespace
+void Recorder::drop(const Event &e) {
+  ++dropped_;
+  if (std::holds_alternative<SpanData>(e.data))
+    ++droppedSpans_;
+  else if (std::holds_alternative<MarkData>(e.data))
+    ++droppedMarks_;
+  else
+    ++droppedMetrics_;
+}
 void Recorder::evict() {
   metrics_ -= isMetric(events_.front());
   bytes_ -= eventBytes(events_.front());
+  drop(events_.front());
   events_.pop_front();
-  ++dropped_;
 }
 bool Recorder::reserve(size_t bytes) {
   while (!events_.empty() && bytes_ + bytes > config_.maxBytes)
@@ -48,7 +57,7 @@ void Recorder::append(Event e) {
   e.sequence = ++sequence_;
   const auto size = eventBytes(e);
   if (size > config_.maxBytes) {
-    ++dropped_;
+    drop(e);
     return;
   }
   // Periodic samples may fill at most half the buffer, so they replace older samples
@@ -63,7 +72,7 @@ void Recorder::append(Event e) {
   while (!events_.empty() && events_.size() >= config_.maxEvents)
     evict();
   if (!reserve(size)) {
-    ++dropped_;
+    drop(e);
     return;
   }
   bytes_ += size;
@@ -81,6 +90,7 @@ uint64_t Recorder::startSpan(Context c, std::string parent) {
   const size_t size = sizeof(Active) + contextBytes(c) + parent.capacity() + 64;
   if (active_.size() >= config_.maxActiveSpans || size > config_.maxBytes || !reserve(size)) {
     ++dropped_;
+    ++droppedSpans_;
     return 0;
   }
   const auto token = ++token_;
@@ -166,7 +176,8 @@ Page Recorder::read(uint64_t after, size_t limit) {
   return p;
 }
 Stats Recorder::statsAt(double time) const {
-  return {sessionId_, wallOrigin_, time, recording_, events_.size(), bytes_, dropped_, active_.size()};
+  return {sessionId_, wallOrigin_,    time,          recording_,    events_.size(), bytes_,
+          dropped_,   active_.size(), droppedSpans_, droppedMarks_, droppedMetrics_};
 }
 Stats Recorder::stats() {
   std::lock_guard lock(mutex_);

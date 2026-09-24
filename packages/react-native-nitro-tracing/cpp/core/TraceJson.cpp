@@ -179,6 +179,7 @@ std::string exportTraceEvents(const Snapshot &s) {
   o << "{\"displayTimeUnit\":\"ms\",\"otherData\":{\"generator\":\"react-native-nitro-tracing\",\"sessionId\":";
   quote(o, s.stats.sessionId);
   o << ",\"startedAtUnixMs\":" << s.stats.startedAtUnixMs << ",\"droppedEvents\":" << s.stats.droppedEvents
+    << ",\"droppedSpans\":" << s.stats.droppedSpans << ",\"droppedMarks\":" << s.stats.droppedMarks
     << "},\"traceEvents\":[{\"pid\":1,\"ph\":\"M\",\"name\":\"process_name\",\"args\":{\"name\":\"React Native app\"}}";
   for (const auto &[tid, name] : lanes.names()) {
     o << ",{\"pid\":1,\"tid\":" << tid << ",\"ph\":\"M\",\"name\":\"thread_name\",\"args\":{\"name\":";
@@ -197,7 +198,9 @@ std::string exportJson(const Snapshot &s) {
   quote(o, s.stats.sessionId);
   o << ",\"startedAtUnixMs\":" << s.stats.startedAtUnixMs << ",\"recording\":" << (s.stats.recording ? "true" : "false")
     << ",\"activeSpans\":" << s.stats.activeSpans << ",\"droppedEvents\":" << s.stats.droppedEvents
-    << ",\"earliestSequence\":" << s.page.earliestSequence << ",\"events\":[";
+    << ",\"droppedSpans\":" << s.stats.droppedSpans << ",\"droppedMarks\":" << s.stats.droppedMarks
+    << ",\"droppedMetrics\":" << s.stats.droppedMetrics << ",\"earliestSequence\":" << s.page.earliestSequence
+    << ",\"events\":[";
   bool comma = false;
   for (const auto &e : s.page.events) {
     if (comma)

@@ -34,7 +34,7 @@ flowchart TB
 - Events get a global, increasing `sequence`. Readers page with `afterSequence`, and the UI keys rows by sequence.
 - Budgets:
   - `maxEvents` and `maxBytes` bound retained history, and `maxActiveSpans` bounds open spans.
-  - Oldest events are evicted first, and `droppedEvents` counts each evicted span or mark.
+  - Oldest events are evicted first. `droppedEvents` counts every evicted or rejected event, and `droppedSpans`, `droppedMarks` and `droppedMetrics` split it by kind.
 - **Metric fairness.** Periodic samples may fill at most half of `maxEvents`. When they reach it, a new sample replaces the oldest sample instead of evicting the oldest event. Metric series are rolling windows and never count as dropped, so continuous sampling cannot erase a long session's spans.
 - Source span IDs (`sourceSpanId`, `sourceParentSpanId`) let external producers such as Sentry or upload engines keep parent links, even when the parent completes after its children. Missing or evicted parents stay visible as incomplete relationships.
 

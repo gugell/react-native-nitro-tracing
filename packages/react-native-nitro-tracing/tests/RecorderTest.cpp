@@ -23,6 +23,17 @@ int main() {
     assert(std::get<MetricData>(page.events.back().data).value == 49);
     assert(page.droppedEvents == 0); // rolled samples are not lost history
   }
+  {
+    // Drops are counted by kind, so the inspector can say what history is missing.
+    Recorder small({4, 1024 * 1024, 1, 1000});
+    for (int i = 0; i < 6; ++i)
+      small.mark(ctx());
+    auto open = small.startSpan(ctx());
+    assert(open != 0 && small.startSpan(ctx()) == 0); // maxActiveSpans = 1
+    auto stats = small.stats();
+    assert(stats.droppedMarks == 2 && stats.droppedSpans == 1 && stats.droppedMetrics == 0);
+    assert(stats.droppedEvents == stats.droppedMarks + stats.droppedSpans + stats.droppedMetrics);
+  }
   double clock = 100;
   Recorder r({100, 1024 * 1024, 10, 1000}, [&] { return clock; });
   auto a = r.startSpan(ctx());

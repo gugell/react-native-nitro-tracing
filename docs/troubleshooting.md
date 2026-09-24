@@ -30,7 +30,7 @@ React Navigation emits `ready` for the first route, not `state`. The navigation 
 
 Two events share a span ID. Custom collectors must give each event a unique `sourceSpanId`. Truncating long IDs from the front collapses IDs that share a prefix, so keep the unique tail. The inspector keys rows by sequence, so the list itself stays correct.
 
-## "N events dropped; this history is incomplete"
+## "Lost N spans, M marks; this history is incomplete"
 
 Spans or marks exceeded the budget and the oldest were evicted. Raise `recordingOptions.maxEvents` / `maxBytes`, or record fewer events. Metric samples do not cause this: they roll within their half of the buffer.
 

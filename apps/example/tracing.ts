@@ -7,17 +7,30 @@ import {
   createExpoTraceSharing,
   registerTraceDevMenu,
 } from 'react-native-nitro-tracing/expo'
+import {
+  createErrorsPlugin,
+  createNativeMetricsPlugin,
+  createNavigationPlugin,
+  createNetworkPlugin,
+} from 'react-native-nitro-tracing/plugins'
 import { createReleaseProfilerPlugin } from 'react-native-nitro-tracing/release-profiler'
 import * as profiler from 'react-native-release-profiler'
+import { exampleScreens } from './activity'
 /** Recreate ownership for every mount/refresh; dispose only that effect's client. */
 export function useExampleTracing() {
   const [client, setClient] = useState<TraceClient>()
   useEffect(() => {
     const next = createTraceClient({
       ...createExpoTraceSharing(),
-      runtimeMetrics: __DEV__,
+      runtimeMetrics: true,
       autoProfile: __DEV__,
       profiler: createReleaseProfilerPlugin(profiler),
+      plugins: [
+        createNativeMetricsPlugin(),
+        createNavigationPlugin(exampleScreens),
+        createNetworkPlugin(),
+        createErrorsPlugin(),
+      ],
       onError: console.warn,
     })
     setClient(next)

@@ -1,0 +1,73 @@
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      increment:
+        description: Version increment (auto reads conventional commits; initial only for the first release)
+        type: choice
+        default: patch
+        options: [auto, patch, minor, major, initial]
+      prerelease:
+        description: Publish a prerelease under this dist-tag instead of latest
+        type: choice
+        default: none
+        options: [none, alpha, beta, rc]
+permissions:
+  contents: read
+concurrency:
+  group: npm-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+      - name: Ensure npm supports trusted publishing
+        run: npm install --global npm@11
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm codegen:check && pnpm check
+      - run: pnpm pack:check
+      - name: Configure release author
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+      - name: Release with npm trusted publishing
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_INCREMENT: ${{ inputs.increment }}
+          RELEASE_PRERELEASE: ${{ inputs.prerelease }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # "initial" publishes the version already in the manifest, so there is
+          # no increment to qualify with a prerelease id.
+          if [ "$RELEASE_INCREMENT" = initial ] && [ "$RELEASE_PRERELEASE" != none ]; then
+            echo "error: 'initial' cannot be combined with a prerelease channel." >&2
+            exit 1
+          fi
+          arguments=()
+          case "$RELEASE_INCREMENT" in
+          # No positional increment: release-it takes the bump from the
+          # conventional commits, and from the current prerelease when there is
+          # one — which is what makes alpha.0 advance to alpha.1 on a re-run.
+          auto) ;;
+          initial) arguments+=(--no-increment) ;;
+          *) arguments+=("$RELEASE_INCREMENT") ;;
+          esac
+          if [ "$RELEASE_PRERELEASE" != none ]; then
+            arguments+=("--preRelease=$RELEASE_PRERELEASE")
+          fi
+          pnpm release ${arguments[@]+"${arguments[@]}"} --ci --npm.skipChecks

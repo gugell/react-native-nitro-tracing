@@ -1,19 +1,24 @@
 name: Validate
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
 jobs:
   package:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '24'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm codegen && git diff --exit-code -- packages/react-native-nitro-tracing/nitrogen
-      - run: pnpm typecheck && pnpm test && pnpm test:native && pnpm build
-      - run: pnpm --filter react-native-nitro-tracing test:sentry
-      - run: pnpm exec prettier --check .
-      - run: clang-format --dry-run --Werror packages/react-native-nitro-tracing/cpp/*.cpp packages/react-native-nitro-tracing/cpp/*.hpp packages/react-native-nitro-tracing/cpp/core/*.cpp packages/react-native-nitro-tracing/cpp/core/*.hpp packages/react-native-nitro-tracing/tests/*.cpp
-      - run: pnpm --dir packages/react-native-nitro-tracing pack --pack-destination /tmp
+      - run: pnpm codegen:check
+      - run: pnpm check
+      - run: pnpm pack:check
+      - run: pnpm release:dry-run

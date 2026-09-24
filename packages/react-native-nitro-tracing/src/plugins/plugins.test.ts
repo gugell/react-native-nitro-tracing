@@ -254,6 +254,52 @@ it('captures Sentry measurements locally and excludes our exported spans', async
   expect(unsubscribe).toHaveBeenCalledTimes(1)
 })
 
+it('maps Sentry frame and app-start measurements onto the shared metric names', () => {
+  const { recording, native } = fixture()
+  let cb: (span: unknown) => void = () => undefined
+  const sentry = {
+    getClient: () => ({
+      on: (_: string, callback: typeof cb) => ((cb = callback), jest.fn()),
+    }),
+    startInactiveSpan: jest.fn(),
+    spanToJSON: jest
+      .fn()
+      .mockReturnValueOnce({
+        start_timestamp: 1.0,
+        timestamp: 1.5,
+        trace_id: 't',
+        span_id: 'a',
+        op: 'app.start.cold',
+        data: {},
+      })
+      .mockReturnValueOnce({
+        start_timestamp: 2.0,
+        timestamp: 3.0,
+        trace_id: 't',
+        span_id: 'b',
+        description: 'Checkout',
+        data: { 'frames.total': 58, 'frames.slow': 3, 'frames.frozen': 1 },
+      }),
+  } as unknown as SentryPluginOptions['sentry']
+  startPlugins(
+    recording,
+    [createSentryPlugin({ sentry, captureSpans: true })],
+    jest.fn()
+  )
+  cb({})
+  cb({})
+  const metrics = native.recordMetric.mock.calls.map(([m]) => [m.name, m.value])
+  expect(metrics).toEqual([
+    ['app.start.cold', 500],
+    ['ui.frames.total', 58],
+    ['ui.frames.slow', 3],
+    ['ui.frames.frozen', 1],
+  ])
+  expect(native.recordMetric.mock.calls[1][0].attributes).toContainEqual({
+    key: 'source',
+    value: 'sentry',
+  })
+})
 it('recovers profiler ownership after a synchronous native stop failure', async () => {
   const { recording } = fixture()
   const api = {

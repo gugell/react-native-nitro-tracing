@@ -52,7 +52,15 @@ export function createPerformancePlugin(
                 { key: 'source.startTimeMs', value: String(entry.startTime) },
               ],
             }
-            if (entry.entryType === 'measure')
+            if (entry.entryType === 'longtask')
+              recording.recordSpan({
+                ...context,
+                name: 'js.longtask',
+                timestampMs,
+                durationMs: entry.duration,
+                outcome: 'success',
+              })
+            else if (entry.entryType === 'measure')
               recording.recordSpan({
                 ...context,
                 timestampMs,
@@ -83,8 +91,15 @@ export function createPerformancePlugin(
       const observer = new api.PerformanceObserver((list) =>
         ingest(list.getEntries())
       )
+      // Global RN observers reject unknown types; react-native-performance lacks longtask.
+      const supported = (
+        api.PerformanceObserver as { supportedEntryTypes?: readonly string[] }
+      ).supportedEntryTypes
+      const entryTypes = ['mark', 'measure', 'metric', 'longtask'].filter(
+        (type) => (supported ? supported.includes(type) : type !== 'longtask')
+      )
       try {
-        observer.observe({ entryTypes: ['mark', 'measure', 'metric'] })
+        observer.observe({ entryTypes } as never)
       } catch (error) {
         observer.disconnect()
         throw error

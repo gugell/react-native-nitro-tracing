@@ -1,12 +1,15 @@
 import type { Recording } from '../specs/Recording.nitro'
 import type { TracePage } from '../types'
 /** Bound work to retained history at read start, not an arbitrary UI result limit. */
-export async function readSnapshot(recording: Recording): Promise<TracePage> {
+export async function readSnapshot(
+  recording: Recording,
+  previous?: TracePage
+): Promise<TracePage> {
   const page: TracePage = {
     spans: [],
     marks: [],
     metrics: [],
-    nextSequence: 0,
+    nextSequence: previous?.nextSequence ?? 0,
     earliestSequence: 0,
     droppedEvents: 0,
   }
@@ -16,7 +19,7 @@ export async function readSnapshot(recording: Recording): Promise<TracePage> {
       afterSequence: page.nextSequence,
       limit: 1000,
     })
-    const previous = page.nextSequence
+    const cursor = page.nextSequence
     page.spans.push(...batch.spans)
     page.marks.push(...batch.marks)
     page.metrics.push(...batch.metrics)
@@ -24,10 +27,32 @@ export async function readSnapshot(recording: Recording): Promise<TracePage> {
     page.earliestSequence = batch.earliestSequence
     page.droppedEvents = batch.droppedEvents
     if (
-      batch.nextSequence === previous ||
+      batch.nextSequence === cursor ||
       batch.spans.length + batch.marks.length + batch.metrics.length < 1000
     )
       break
   }
-  return page
+  if (!previous) return page
+  if (
+    page.nextSequence === previous.nextSequence &&
+    page.earliestSequence === previous.earliestSequence &&
+    page.droppedEvents === previous.droppedEvents
+  )
+    return previous
+  const keep = <T extends { sequence: number }>(old: T[], added: T[]): T[] => {
+    const evicted = old.length > 0 && old[0].sequence < page.earliestSequence
+    if (!evicted && added.length === 0) return old
+    return [
+      ...(evicted
+        ? old.filter((event) => event.sequence >= page.earliestSequence)
+        : old),
+      ...added,
+    ]
+  }
+  return {
+    ...page,
+    spans: keep(previous.spans, page.spans),
+    marks: keep(previous.marks, page.marks),
+    metrics: keep(previous.metrics, page.metrics),
+  }
 }

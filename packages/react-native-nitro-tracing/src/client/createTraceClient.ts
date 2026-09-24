@@ -16,6 +16,8 @@ import type { PluginHandle, TracePlugin } from '../plugins/TracePlugin'
 import type { ReleaseProfilerPlugin } from '../plugins/releaseProfiler'
 import { recordPlayground, type PlaygroundReport } from './playground'
 
+/** `recording`: lossless native schema. `perfetto`: Chrome Trace Events for ui.perfetto.dev. */
+export type TraceFormat = 'recording' | 'perfetto'
 export type ClientAttributes = Record<
   string,
   string | number | boolean | undefined
@@ -29,10 +31,16 @@ export interface TraceClientOptions {
   runtimeMetrics?: boolean | RuntimeMetricsOptions
   onError?: (error: unknown) => void
   recordingOptions?: Partial<RecordingOptions>
-  share?: (recording: Recording) => Promise<void>
+  /** Serialize and deliver a recording; `format` picks raw recording JSON or Perfetto trace events. */
+  share?: (recording: Recording, format: TraceFormat) => Promise<void>
   shareProfile?: (path: string) => Promise<void>
   /** Start Hermes sampling with each recording; stopped and saved with it. */
   autoProfile?: boolean
+  /**
+   * CPU profile window captured by `flag()` when a profiler is attached and idle.
+   * Default 10000 ms; 0 records only the flag mark.
+   */
+  flagProfileMs?: number
   profiler?: ReleaseProfilerPlugin
 }
 export interface TraceClientSnapshot {
@@ -44,6 +52,25 @@ export interface TraceClientSnapshot {
   profiling: boolean
   profilePath?: string
   playground?: PlaygroundReport
+  /** Plugin IDs started for the current recording, so the UI can tell untracked from quiet. */
+  collectors?: string[]
+}
+/** react-native-performance when installed (existing marks live in its buffer), else RN's global Web Performance API. */
+const defaultPerformanceApi = (): PerformancePluginOptions | undefined => {
+  try {
+    // Directly inside `try` so Metro treats the optional peer as optional.
+    const module =
+      require('react-native-performance') as typeof import('react-native-performance')
+    return {
+      performance: module.default,
+      PerformanceObserver: module.PerformanceObserver,
+    }
+  } catch {
+    const global = globalThis as unknown as Partial<PerformancePluginOptions>
+    return global.performance && global.PerformanceObserver
+      ? (global as PerformancePluginOptions)
+      : undefined
+  }
 }
 /** Each client exclusively owns its recording and producers. Consumers must dispose it. */
 export function createTraceClient(options: TraceClientOptions = {}) {
@@ -139,8 +166,9 @@ export function createTraceClient(options: TraceClientOptions = {}) {
     recording = undefined
     const { Tracing } = require('../index') as typeof import('../index')
     recording = Tracing.startRecording({
-      maxEvents: 3000,
-      maxBytes: 2 * 1024 * 1024,
+      // ~1-2 hours of spans for UAT sessions; metric samples use at most half.
+      maxEvents: 10000,
+      maxBytes: 6 * 1024 * 1024,
       maxActiveSpans: 256,
       spanTimeoutMs: 30 * 60 * 1000,
       ...options.recordingOptions,
@@ -148,18 +176,14 @@ export function createTraceClient(options: TraceClientOptions = {}) {
     publish({ error: undefined, playground: undefined })
     try {
       const plugins = [...(options.plugins ?? [])]
-      if (options.performance !== false) {
-        const api =
-          options.performance ??
-          (() => {
-            const { default: performance, PerformanceObserver } =
-              require('react-native-performance') as typeof import('react-native-performance')
-            return { performance, PerformanceObserver }
-          })()
+      const api =
+        options.performance === false
+          ? undefined
+          : (options.performance ?? defaultPerformanceApi())
+      if (api)
         plugins.unshift(
           createPerformancePlugin(api, options.sink ? emit : undefined)
         )
-      }
       if (options.runtimeMetrics)
         plugins.push(
           createRuntimeMetricsPlugin(
@@ -168,6 +192,7 @@ export function createTraceClient(options: TraceClientOptions = {}) {
         )
       if (options.profiler) plugins.push(options.profiler)
       handle = startPlugins(recording, plugins, reportError)
+      publish({ collectors: plugins.map((plugin) => plugin.id) })
     } catch (error) {
       try {
         await stopCurrent()
@@ -345,8 +370,33 @@ export function createTraceClient(options: TraceClientOptions = {}) {
       enqueue(async () => {
         if (!recording || !options.share) return
         await stopCurrent()
-        await options.share(recording)
+        await options.share(recording, 'recording')
       }),
+    /** Share a snapshot while recording continues, e.g. right after catching a problem. */
+    shareTrace: (format: TraceFormat = 'perfetto') =>
+      enqueue(async () => {
+        if (recording && options.share) await options.share(recording, format)
+      }),
+    /**
+     * Mark the moment a tester saw a problem. With an idle profiler this also captures
+     * a bounded Hermes profile, so the flag ships with what the JS thread was doing.
+     */
+    flag: (note?: string) => {
+      trace.mark('flag', { source: 'flag', note })
+      const profiler = options.profiler
+      const windowMs = options.flagProfileMs ?? 10000
+      if (!profiler || windowMs <= 0) return
+      // enqueue already reports failures; the catches only avoid unhandled rejections.
+      enqueue(async () => {
+        if (!enabled || profiler.isProfiling()) return
+        profiler.startProfiling()
+        setTimeout(() => {
+          enqueue(async () => {
+            if (profiler.isProfiling()) await profiler.stopProfiling()
+          }).catch(() => {})
+        }, windowMs)
+      }).catch(() => {})
+    },
     toggleProfile: () =>
       enqueue(async () => {
         if (!enabled || !options.profiler) return

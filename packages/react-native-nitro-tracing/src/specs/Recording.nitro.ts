@@ -8,6 +8,7 @@ import type {
   ReadOptions,
   TracePage,
   RecordingStats,
+  NativeSamplingOptions,
 } from '../types'
 /** Owns bounded native history. Stop before export; dispose when all readers are done. */
 export interface Recording extends HybridObject<{
@@ -30,4 +31,10 @@ export interface Recording extends HybridObject<{
   stop(): void
   /** Serialize a snapshot off the JS thread; includes schema version and clock anchor. */
   exportJson(): Promise<string>
+  /** Chrome Trace Event JSON for ui.perfetto.dev; serialized off the JS thread. */
+  exportTraceEvents(): Promise<string>
+  /** Start a native thread writing process.cpu, process.memory and ui.* frame metrics. Replaces a running sampler. */
+  startNativeSampling(options: NativeSamplingOptions): void
+  /** Stop native sampling. Idempotent; stop() and dispose() also stop it. */
+  stopNativeSampling(): void
 }

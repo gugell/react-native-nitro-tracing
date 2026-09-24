@@ -1,6 +1,9 @@
+import { createStore } from './store'
 import { readSnapshot } from './readSnapshot'
 import {
+  useCallback,
   useEffect,
+  useDeferredValue,
   useMemo,
   useRef,
   useState,
@@ -19,13 +22,25 @@ import {
   type Trace,
 } from './explorerModel'
 import { recordingMetrics, operationMetrics } from './viewerModel'
+import {
+  buildTimeline,
+  currentScreen,
+  defaultBudgets,
+  summarizeTopics,
+  type Budgets,
+} from './topics'
 export type Metric = ReturnType<typeof recordingMetrics>[number]
 export type Detail =
   | { kind: 'trace'; value: Trace }
   | { kind: 'span'; value: SpanEvent }
   | { kind: 'mark'; value: MarkEvent }
   | { kind: 'metric'; value: Metric }
-export type Tab = 'overview' | 'explore' | 'metrics' | 'profiles' | 'playground'
+export type Tab = 'overview' | 'timeline' | 'explore' | 'metrics' | 'tools'
+export interface Telemetry {
+  stats?: RecordingStats
+  error?: string
+  pending?: Pick<TracePage, 'nextSequence' | 'earliestSequence'>
+}
 const empty = (): TracePage => ({
   spans: [],
   marks: [],
@@ -34,17 +49,33 @@ const empty = (): TracePage => ({
   earliestSequence: 0,
   droppedEvents: 0,
 })
-export const useTraceViewer = (client: TraceClient) => {
+export const useTraceViewer = (
+  client: TraceClient,
+  budgets?: Partial<Budgets>
+) => {
   const snapshot = useSyncExternalStore(
     client.subscribe,
     client.getSnapshot,
     client.getSnapshot
   )
-  const [tab, setTab] = useState<Tab>('explore')
+  const [tab, setTab] = useState<Tab>('overview')
   const [mode, setMode] = useState<ExplorerMode>('traces')
   const [page, setPage] = useState(empty)
-  const [stats, setStats] = useState<RecordingStats>()
-  const [error, setError] = useState<string>()
+  const [telemetry] = useState(() => createStore<Telemetry>({}))
+  const setStats = (stats: RecordingStats) => telemetry.set({ stats })
+  const setError = (error: string | undefined) => telemetry.set({ error })
+  const pendingPage = useRef<TracePage | undefined>(undefined)
+  const setPending = (value: TracePage | undefined) => {
+    pendingPage.current = value
+    telemetry.set({
+      pending: value
+        ? {
+            nextSequence: value.nextSequence,
+            earliestSequence: value.earliestSequence,
+          }
+        : undefined,
+    })
+  }
   const [queries, setQueries] = useState<Record<ExplorerMode, Query>>({
     traces: defaultQuery(),
     spans: defaultQuery(),
@@ -53,7 +84,6 @@ export const useTraceViewer = (client: TraceClient) => {
   const [details, setDetails] = useState<Detail[]>([])
   const [paused, setPaused] = useState(false)
   const [holding, setHolding] = useState(false)
-  const [pending, setPending] = useState<TracePage>()
   const [metricQuery, setMetricQuery] = useState('')
   const [metricCategory, setMetricCategory] = useState('all')
   const [metricSort, setMetricSort] = useState('name')
@@ -76,13 +106,20 @@ export const useTraceViewer = (client: TraceClient) => {
   latestPage.current = page
   useEffect(() => {
     if (!snapshot.visible) return
+    let cached: TracePage | undefined
+    let cachedRecording: ReturnType<TraceClient['getRecording']>
     let cancelled = false
     let timer: ReturnType<typeof setTimeout>
     const refresh = async () => {
       try {
         const recording = client.getRecording()
         if (recording) {
-          const next = await readSnapshot(recording)
+          if (cachedRecording !== recording) {
+            cached = undefined
+            cachedRecording = recording
+          }
+          const next = await readSnapshot(recording, cached)
+          cached = next
           if (cancelled || recording !== client.getRecording()) return
           const current = recording.getStats()
           setStats(current)
@@ -131,15 +168,46 @@ export const useTraceViewer = (client: TraceClient) => {
       clearTimeout(timer)
     }
   }, [client, snapshot.visible])
-  const traces = useMemo(() => buildTraces(page), [page])
-  const metrics = useMemo(() => recordingMetrics(page), [page])
+  const traces = useMemo(() => buildTraces(page), [page.spans, page.marks])
+  const metrics = useMemo(
+    () => (tab === 'explore' ? [] : recordingMetrics(page)),
+    [page, tab]
+  )
+  const collectors = snapshot.collectors
+  const { appReadyMs, screenMs, requestMs, stallMs } = {
+    ...defaultBudgets,
+    ...budgets,
+  }
+  const summary = useMemo(
+    () =>
+      summarizeTopics(page, collectors ?? [], {
+        appReadyMs,
+        screenMs,
+        requestMs,
+        stallMs,
+      }),
+    [page, collectors, appReadyMs, screenMs, requestMs, stallMs]
+  )
+  const timeline = useMemo(
+    () => (tab === 'timeline' ? buildTimeline(page, summary.issues) : []),
+    [page, summary.issues, tab]
+  )
+  const screen = useMemo(() => currentScreen(page), [page.marks])
+  const operations = useMemo(
+    () => (tab === 'metrics' ? operationMetrics(page.spans) : []),
+    [page.spans, tab]
+  )
   const query = queries[mode]
+  const deferredQuery = useDeferredValue(query)
   const results = useMemo(
     () =>
       mode === 'traces'
-        ? queryTraces(traces, query)
-        : queryEvents(mode === 'spans' ? page.spans : page.marks, query),
-    [mode, traces, page, query]
+        ? queryTraces(traces, deferredQuery)
+        : queryEvents(
+            mode === 'spans' ? page.spans : page.marks,
+            deferredQuery
+          ),
+    [mode, traces, page.spans, page.marks, deferredQuery]
   )
   const updateQuery = (patch: Partial<Query>) => {
     setHolding(true)
@@ -150,6 +218,7 @@ export const useTraceViewer = (client: TraceClient) => {
     offsets.current[mode] = 0
   }
   const apply = () => {
+    const pending = pendingPage.current
     if (pending) setPage(pending)
     setPending(undefined)
     setHolding(false)
@@ -163,10 +232,11 @@ export const useTraceViewer = (client: TraceClient) => {
       })
   }
   const detail = details[details.length - 1]
-  const open = (next: Detail) => {
+  // Stable identity lets memoized list rows skip re-rendering on live ticks.
+  const open = useCallback((next: Detail) => {
     setHolding(true)
     setDetails((previous) => [...previous.slice(-31), next])
-  }
+  }, [])
   const showEvents = (mode: 'spans' | 'marks', patch: Partial<Query>) => {
     setTab('explore')
     setMode(mode)
@@ -189,9 +259,12 @@ export const useTraceViewer = (client: TraceClient) => {
     mode,
     setMode,
     page,
-    stats,
-    error,
+    telemetry,
     traces,
+    topics: summary.topics,
+    issues: summary.issues,
+    timeline,
+    screen,
     results,
     query,
     updateQuery,
@@ -205,9 +278,12 @@ export const useTraceViewer = (client: TraceClient) => {
         : mode === 'spans'
           ? page.spans.length
           : page.marks.length,
-    uncorrelated:
-      page.spans.filter((s) => !s.correlationId).length +
-      page.marks.filter((s) => !s.correlationId).length,
+    uncorrelated: useMemo(
+      () =>
+        page.spans.filter((s) => !s.correlationId).length +
+        page.marks.filter((s) => !s.correlationId).length,
+      [page.spans, page.marks]
+    ),
     detail,
     detailState,
     details,
@@ -216,26 +292,9 @@ export const useTraceViewer = (client: TraceClient) => {
     traceFor: (span: SpanEvent) => traceForSpan(traces, span),
     showSpans: (patch: Partial<Query>) => showEvents('spans', patch),
     showMarks: (patch: Partial<Query>) => showEvents('marks', patch),
-    evicted: (() => {
-      const retained = pending ?? page
-      if (!detail) return false
-      const sequences = new Set(
-        [...retained.spans, ...retained.marks, ...retained.metrics].map(
-          (event) => event.sequence
-        )
-      )
-      const inspected =
-        detail.kind === 'trace'
-          ? [...detail.value.spans, ...detail.value.marks]
-          : detail.kind === 'metric'
-            ? detail.value.samples
-            : [detail.value]
-      return inspected.some((event) => !sequences.has(event.sequence))
-    })(),
     paused,
     holding,
     setHolding,
-    pending,
     apply,
     togglePause: () => {
       if (paused) apply()
@@ -243,7 +302,7 @@ export const useTraceViewer = (client: TraceClient) => {
     },
     offsets,
     metrics,
-    operations: operationMetrics(page.spans),
+    operations,
     metricQuery,
     setMetricQuery,
     metricCategory,
@@ -253,6 +312,7 @@ export const useTraceViewer = (client: TraceClient) => {
     start: () => act(client.start),
     stop: () => act(client.stop),
     export: () => act(client.export),
+    sharePerfetto: () => act(() => client.shareTrace('perfetto')),
     toggleProfile: () => act(client.toggleProfile),
     shareProfile: () => act(client.shareProfile),
     playground: () => act(client.playground),

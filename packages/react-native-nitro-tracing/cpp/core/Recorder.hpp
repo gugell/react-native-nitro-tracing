@@ -43,6 +43,7 @@ private:
   std::map<uint64_t, Active> active_;
   std::deque<Event> events_;
   size_t bytes_ = 0;
+  size_t metrics_ = 0;
   uint64_t token_ = 0, sequence_ = 0, dropped_ = 0;
   bool recording_ = true;
   double now() const;

@@ -15,6 +15,7 @@ add_library(${PACKAGE_NAME} SHARED
         ../cpp/core/Recorder.cpp
         ../cpp/core/Retention.cpp
         ../cpp/core/TraceJson.cpp
+        ../cpp/core/NativeSampler.cpp
 )
 
 # Add Nitrogen specs :)

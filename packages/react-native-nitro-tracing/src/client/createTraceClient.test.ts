@@ -120,7 +120,7 @@ it('freezes native history before invoking the configured sharing adapter', asyn
   const client = createTraceClient({ performance: false, share })
   await client.start()
   await client.export()
-  expect(share).toHaveBeenCalledWith(client.getRecording())
+  expect(share).toHaveBeenCalledWith(client.getRecording(), 'recording')
   expect(client.getSnapshot().recording).toBe(false)
   await client.dispose()
 })
@@ -227,4 +227,37 @@ it('records app readiness once per client lifetime with an explicit client initi
   expect(mockFactory.mock.results[1].value.recordMetric).not.toHaveBeenCalled()
   clock.mockRestore()
   await client.dispose()
+})
+it('flags with a bounded profile and links the saved file in the recording', async () => {
+  jest.useFakeTimers()
+  const api = {
+    startProfiling: jest.fn(),
+    stopProfiling: jest.fn(async () => '/tmp/flag.cpuprofile'),
+  }
+  const client = createTraceClient({
+    performance: false,
+    flagProfileMs: 5000,
+    profiler: createReleaseProfilerPlugin(api),
+  })
+  await client.start()
+  const native = mockFactory.mock.results[0].value
+  client.flag('checkout froze')
+  client.flag() // a second flag inside the window does not start another profile
+  await jest.advanceTimersByTimeAsync(0)
+  expect(api.startProfiling).toHaveBeenCalledTimes(1)
+  await jest.advanceTimersByTimeAsync(5000)
+  expect(api.stopProfiling).toHaveBeenCalledTimes(1)
+  expect(client.getSnapshot().profilePath).toBe('/tmp/flag.cpuprofile')
+  const names = native.mark.mock.calls.map(([m]: [{ name: string }]) => m.name)
+  expect(names.filter((n: string) => n === 'flag')).toHaveLength(2)
+  expect(native.mark).toHaveBeenCalledWith(
+    expect.objectContaining({
+      name: 'hermes.profile.saved',
+      attributes: expect.arrayContaining([
+        { key: 'path', value: '/tmp/flag.cpuprofile' },
+      ]),
+    })
+  )
+  await client.dispose()
+  jest.useRealTimers()
 })

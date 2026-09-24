@@ -38,14 +38,14 @@ Example Explore layout:
 
 Search is case-insensitive substring matching over name, correlation ID, span ID and retained attribute keys/values. No opaque query language is required initially. Filter groups combine with AND; multiple values within one group combine with OR. Apply filtering and sorting to the entire loaded recording before UI pagination. Explain when native retention has removed history. Show matching / loaded counts and a Reset action for empty results.
 
-| Control | Traces | Spans | Marks |
-| --- | --- | --- | --- |
-| Outcome | Has error / no recorded errors | Success / error / cancelled / interrupted | Not offered |
-| Source | Any member matches | Native/app, Performance, Sentry, profiler, runtime, unknown | Same source mapping |
-| Time range | Overlaps selected recording-relative interval | Overlaps interval | Timestamp in interval |
-| Minimum duration | Trace wall-clock range | Span duration | Not offered |
-| Correlation ID | Exact match | Exact match | Exact match |
-| Sort | Newest / oldest / longest / most errors / most spans / name | Newest / oldest / longest / shortest / name | Newest / oldest / name |
+| Control          | Traces                                                      | Spans                                                       | Marks                  |
+| ---------------- | ----------------------------------------------------------- | ----------------------------------------------------------- | ---------------------- |
+| Outcome          | Has error / no recorded errors                              | Success / error / cancelled / interrupted                   | Not offered            |
+| Source           | Any member matches                                          | Native/app, Performance, Sentry, profiler, runtime, unknown | Same source mapping    |
+| Time range       | Overlaps selected recording-relative interval               | Overlaps interval                                           | Timestamp in interval  |
+| Minimum duration | Trace wall-clock range                                      | Span duration                                               | Not offered            |
+| Correlation ID   | Exact match                                                 | Exact match                                                 | Exact match            |
+| Sort             | Newest / oldest / longest / most errors / most spans / name | Newest / oldest / longest / shortest / name                 | Newest / oldest / name |
 
 Sort defaults to newest, with a stable identity/sequence tiebreaker. Source is determined from existing event attributes; missing values are shown as unknown or the explicitly known producer, never guessed from the operation name. Trace-level filters retain full trace membership for detail/context. A trace match does not prune its children.
 

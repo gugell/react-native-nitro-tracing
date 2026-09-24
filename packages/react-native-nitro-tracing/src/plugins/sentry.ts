@@ -24,6 +24,38 @@ export function createSentryPlugin(options: SentryPluginOptions): TracePlugin {
       const client = sentry.getClient()
       if (options.captureSpans && !client)
         throw new Error('Initialize Sentry before enabling local capture')
+      /** Sentry as the measurement layer: its frame and app-start data use the native metric names. */
+      const recordMeasurements = (
+        data: ReturnType<typeof sentry.spanToJSON>,
+        start: number,
+        anchorMs: number
+      ) => {
+        const end = (data.timestamp ?? data.start_timestamp) * 1000 - anchorMs
+        const metric = (name: string, value: unknown, unit: string) => {
+          if (typeof value !== 'number' || !Number.isFinite(value)) return
+          recording.recordMetric({
+            name,
+            value,
+            unit,
+            timestampMs: Math.max(0, end),
+            correlationId: data.trace_id,
+            attributes: [
+              { key: 'source', value: 'sentry' },
+              {
+                key: 'span',
+                value: (data.description || data.op || '').slice(0, 256),
+              },
+            ],
+          })
+        }
+        // Set by Sentry's nativeFrames integration on spans it measured.
+        metric('ui.frames.total', data.data?.['frames.total'], 'count')
+        metric('ui.frames.slow', data.data?.['frames.slow'], 'count')
+        metric('ui.frames.frozen', data.data?.['frames.frozen'], 'count')
+        // appStart integration spans: app.start.cold / app.start.warm.
+        if (data.op === 'app.start.cold' || data.op === 'app.start.warm')
+          metric(data.op, end - start, 'ms')
+      }
       const unsubscribe = options.captureSpans
         ? client!.on('spanEnd', (span) => {
             try {
@@ -58,6 +90,7 @@ export function createSentryPlugin(options: SentryPluginOptions): TracePlugin {
                   },
                 ],
               })
+              recordMeasurements(data, start, anchor)
             } catch (error) {
               reportError(error)
             }

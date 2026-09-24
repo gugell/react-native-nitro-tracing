@@ -1,7 +1,7 @@
 {
   "name": "react-native-nitro-tracing",
-  "version": "0.2.0",
-  "description": "Bounded native performance recordings and explicit spans for React Native",
+  "version": "0.5.7",
+  "description": "In-app performance tracing for React Native: native spans, frame and resource metrics, a live inspector and Perfetto export \u2014 for dev, custom and UAT builds",
   "main": "lib/commonjs/index.cjs",
   "module": "lib/module/index.mjs",
   "types": "lib/typescript/src/index.d.ts",
@@ -17,6 +17,7 @@
     "android/fix-prefab.gradle",
     "android/CMakeLists.txt",
     "android/src",
+    "android/proguard-rules.pro",
     "cpp",
     "ios/**/*.h",
     "ios/**/*.m",
@@ -34,6 +35,7 @@
     "react.ts",
     "expo.ts",
     "LICENSE",
+    "CHANGELOG.md",
     "!src/**/*.test.*"
   ],
   "scripts": {
@@ -43,7 +45,8 @@
     "test": "jest --runInBand",
     "build": "node scripts/build.mjs && tsc -p tsconfig.build.json",
     "prepack": "pnpm nitrogen && pnpm build",
-    "test:sentry": "node scripts/test-sentry.cjs"
+    "test:sentry": "node scripts/test-sentry.cjs",
+    "release": "release-it"
   },
   "keywords": [
     "react-native",
@@ -51,45 +54,63 @@
     "performance",
     "tracing",
     "profiler",
-    "expo"
+    "expo",
+    "perfetto",
+    "trace-inspector",
+    "sentry"
   ],
-  "author": "Margelo",
+  "author": "gugell",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gugell/react-native-nitro-tracing.git",
+    "directory": "packages/react-native-nitro-tracing"
+  },
+  "bugs": "https://github.com/gugell/react-native-nitro-tracing/issues",
   "license": "MIT",
-  "homepage": "https://nitro.margelo.com",
+  "homepage": "https://github.com/gugell/react-native-nitro-tracing#readme",
   "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "devDependencies": {
-    "nitrogen": "catalog:",
-    "react-native-nitro-modules": "catalog:",
-    "react-native": "catalog:",
-    "react": "catalog:",
-    "typescript": "catalog:",
-    "@types/react": "~19.2.14",
-    "react-native-performance": "catalog:",
-    "@sentry/react-native": "catalog:",
-    "jest": "catalog:",
-    "babel-jest": "catalog:",
-    "@types/jest": "catalog:",
-    "@babel/preset-typescript": "^7.25.0",
     "@babel/preset-env": "catalog:",
-    "esbuild": "0.28.2",
+    "@babel/preset-typescript": "^7.25.0",
+    "@legendapp/list": "3.4.0",
+    "@sentry/react-native": "catalog:",
+    "@types/jest": "catalog:",
     "@types/node": "^22.0.0",
+    "@types/react": "~19.2.14",
+    "@types/react-test-renderer": "19",
+    "babel-jest": "catalog:",
+    "esbuild": "0.28.2",
     "expo-dev-client": "~56.0.27",
     "expo-file-system": "~56.0.11",
+    "expo-glass-effect": "56.0.4",
     "expo-sharing": "~56.0.26",
-    "react-native-safe-area-context": "~5.7.0"
+    "jest": "catalog:",
+    "nitrogen": "catalog:",
+    "react": "catalog:",
+    "react-native": "catalog:",
+    "react-native-bottom-tabs": "1.4.0",
+    "react-native-nitro-modules": "catalog:",
+    "react-native-performance": "catalog:",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-test-renderer": "19.2.3",
+    "typescript": "catalog:"
   },
   "peerDependencies": {
-    "react": "*",
-    "react-native": "*",
-    "react-native-nitro-modules": "^0.37.1",
-    "react-native-performance": ">=6",
+    "@legendapp/list": ">=3.4.0 <4",
     "@sentry/react-native": ">=7.11.0 <9",
     "expo-dev-client": ">=56",
     "expo-file-system": ">=56",
     "expo-sharing": ">=56",
-    "react-native-safe-area-context": ">=5.7.0 <6"
+    "react": "*",
+    "react-native": "*",
+    "react-native-nitro-modules": "^0.37.1",
+    "react-native-performance": ">=6",
+    "react-native-safe-area-context": ">=5.7.0 <6",
+    "react-native-bottom-tabs": ">=1.4.0 <2",
+    "expo-glass-effect": ">=56"
   },
   "prettier": {
     "quoteProps": "consistent",
@@ -116,6 +137,15 @@
       "optional": true
     },
     "react-native-safe-area-context": {
+      "optional": true
+    },
+    "@legendapp/list": {
+      "optional": true
+    },
+    "react-native-bottom-tabs": {
+      "optional": true
+    },
+    "expo-glass-effect": {
       "optional": true
     }
   },
@@ -177,5 +207,31 @@
       "default": "./lib/module/release-profiler.mjs"
     },
     "./package.json": "./package.json"
+  },
+  "release-it": {
+    "npm": {
+      "publish": true,
+      "publishPath": "../../artifacts/release/react-native-nitro-tracing.tgz",
+      "publishPackageManager": "npm",
+      "publishArgs": [
+        "--access",
+        "public"
+      ]
+    },
+    "git": {
+      "commit": false,
+      "tag": false,
+      "push": false,
+      "requireCleanWorkingDir": false,
+      "requireUpstream": false,
+      "requireBranch": false
+    },
+    "github": {
+      "release": false
+    },
+    "hooks": {
+      "before:init": "pnpm --dir ../.. check",
+      "after:bump": "node ../../scripts/pack-check.mjs --release"
+    }
   }
 }

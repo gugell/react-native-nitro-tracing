@@ -1,12 +1,12 @@
 # Status
 
-Snapshot: 2026-09-24, branch `inspector-topics`, package `0.5.6`.
+Snapshot: 2026-09-24, branch `inspector-topics`, package `0.5.7` (next release 0.6.0).
 
 Goal: in-app performance tooling that works in dev, custom and UAT builds. Trace, catch slowness, and export traces for Perfetto.
 
 ## Verified
 
-Verified on an iPhone 13 Pro Max and a Pixel 7a (dev builds), through a production host app and the example app. Checks: 65 JS tests, native recorder, export and sampler tests, typecheck, prettier and clang-format.
+Verified on an iPhone 13 Pro Max and a Pixel 7a (dev builds), through a production host app and the example app. Checks: 66 JS tests, native recorder, export and sampler tests, typecheck, prettier and clang-format.
 
 | Area                | State                                                                                                                                                  |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -32,7 +32,8 @@ Verified on an iPhone 13 Pro Max and a Pixel 7a (dev builds), through a producti
 - [x] Raise the default `maxEvents` for multi-hour sessions (10000 events, 6 MB; metrics use at most half).
 - [x] Flag an issue with a bounded CPU profile, linked from the Perfetto export (`client.flag()`, `flagProfileMs`).
 - [ ] Guard the profiler against runtime teardown, or document that it must stay off during reloads.
-- [ ] Publish the package (hosts use a vendored tarball until then).
+- [x] Release tooling: release-it, conventional changelog, pack check, trusted-publishing workflow (see [releasing](releasing.md)).
+- [ ] First npm publication (0.6.0), then configure the trusted publisher. Hosts use a vendored tarball until then.
 
 ### Polish
 

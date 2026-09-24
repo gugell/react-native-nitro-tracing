@@ -8,16 +8,16 @@ Goal: in-app performance tooling that works in dev, custom and UAT builds. Trace
 
 Verified on an iPhone 13 Pro Max and a Pixel 7a (dev builds), through a production host app and the example app. Checks: 66 JS tests, native recorder, export and sampler tests, typecheck, prettier and clang-format.
 
-| Area                | State                                                                                                                                                  |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Recorder (C++)      | Bounded ring buffer. Metric samples may fill at most half, so long sessions keep their spans. Builds on armeabi-v7a.                                   |
-| Native sampler      | CPU, memory, UI fps, frame gap, and slow and frozen frames. iOS uses CADisplayLink; Android uses Choreographer.                                        |
-| Export              | Perfetto / Chrome Trace Event JSON with lanes per source, the recording JSON, and the Hermes CPU profile.                                              |
-| Collectors          | Native metrics, navigation and screens, network (XHR and native fetch), errors, Sentry (optional measurement layer), performance API, runtime metrics. |
-| Inspector           | Summary (topics and issues), Timeline by screen, Explore (search, sort, filter), Metrics with units, trace waterfall.                                  |
-| Native UI           | iOS: native tab bar with Liquid Glass, native menus, and glass surfaces. Android: the package's own tab bar and sheets.                                |
-| Live overlay        | Draggable FPS bubble, and a peek/half sheet with UI and JS fps, CPU, memory, requests, stalls and errors, plus Flag and Share.                         |
-| Localization        | Labels live in the package; `labels` / `translate` override them.                                                                                      |
+| Area           | State                                                                                                                                                  |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Recorder (C++) | Bounded ring buffer. Metric samples may fill at most half, so long sessions keep their spans. Builds on armeabi-v7a.                                   |
+| Native sampler | CPU, memory, UI fps, frame gap, and slow and frozen frames. iOS uses CADisplayLink; Android uses Choreographer.                                        |
+| Export         | Perfetto / Chrome Trace Event JSON with lanes per source, the recording JSON, and the Hermes CPU profile.                                              |
+| Collectors     | Native metrics, navigation and screens, network (XHR and native fetch), errors, Sentry (optional measurement layer), performance API, runtime metrics. |
+| Inspector      | Summary (topics and issues), Timeline by screen, Explore (search, sort, filter), Metrics with units, trace waterfall.                                  |
+| Native UI      | iOS: native tab bar with Liquid Glass, native menus, and glass surfaces. Android: the package's own tab bar and sheets.                                |
+| Live overlay   | Draggable FPS bubble, and a peek/half sheet with UI and JS fps, CPU, memory, requests, stalls and errors, plus Flag and Share.                         |
+| Localization   | Labels live in the package; `labels` / `translate` override them.                                                                                      |
 
 ## Known issues
 

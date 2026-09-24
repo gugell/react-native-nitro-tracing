@@ -4,10 +4,10 @@
     "slug": "nitro-tracing-example",
     "version": "0.1.0",
     "ios": {
-      "bundleIdentifier": "com.margelo.nitrotracing.example"
+      "bundleIdentifier": "com.gugell.nitrotracing.example"
     },
     "android": {
-      "package": "com.margelo.nitrotracing.example"
+      "package": "com.gugell.nitrotracing.example"
     },
     "plugins": ["expo-dev-client", "expo-sharing"]
   }

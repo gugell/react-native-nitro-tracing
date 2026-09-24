@@ -72,14 +72,15 @@ Graduate with an ordinary `pnpm release`. Do not pass a positional increment wit
 
 ## First publication
 
-The manifests are at **0.6.0**, and `CHANGELOG.md` has a hand-written 0.6.0 section: the history before it was not in conventional commits, and #1 was squash-merged. Publish exactly that version with `--no-increment` (workflow input `initial`). On that path, `release.sh` keeps the hand-written changelog and uses its section as the GitHub release notes (`scripts/release-notes.mjs`). Later releases generate both from commits again.
+0.6.0 was published on 2026-09-24 with `pnpm release --no-increment`, keeping its hand-written changelog: the history before it was not in conventional commits. On that path, `release.sh` skips the generated changelog and takes the GitHub release notes from the version's `CHANGELOG.md` section (`scripts/release-notes.mjs`).
 
-npm trusted publishing needs the package to exist, so the first publish is done once by hand:
+The root pass commits only files release-it changed (`addUntrackedFiles: false`). Untracked local files never enter a release commit.
+
+Trusted publishing is configured once, now that the package exists:
 
 1. **Create the GitHub environment** named exactly `npm` (Settings → Environments). Add required reviewers if you want a human gate.
-2. **Publish once locally.** From a clean `main`, run `pnpm release --no-increment`. npm prompts for your OTP; nothing is stored.
-3. **Configure the trusted publisher** at `https://www.npmjs.com/package/react-native-nitro-tracing/access` → Trusted publishing → GitHub Actions. Enter the user `gugell`, the repository `react-native-nitro-tracing`, the workflow filename `release.yml` and the environment `npm`. npm does not validate these; a typo shows up only as a failed publish.
-4. **Lock it down**: "Require two-factor authentication and disallow tokens". From then on, OIDC is the only way to publish.
+2. **Configure the trusted publisher** on the package's **Settings** tab at `https://www.npmjs.com/package/react-native-nitro-tracing` → Trusted Publisher → GitHub Actions. Enter the user `gugell`, the repository `react-native-nitro-tracing`, the workflow filename `release.yml` and the environment `npm`. npm does not validate these; a typo shows up only as a failed publish.
+3. **Lock it down**: under Publishing access, choose "Require two-factor authentication and disallow tokens". From then on, OIDC is the only way to publish.
 
 The workflow already has `id-token: write`, installs npm 11 (trusted publishing needs npm ≥ 11.5.1), and uses `environment: npm`. Never store npm or GitHub tokens in the repository.
 

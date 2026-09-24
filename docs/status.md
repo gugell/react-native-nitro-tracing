@@ -1,6 +1,6 @@
 # Status
 
-Snapshot: 2026-09-24, branch `inspector-topics`, package `0.6.0` (unpublished; changelog written).
+Snapshot: 2026-09-24, branch `inspector-topics`, package `0.6.0`, published to npm.
 
 Goal: in-app performance tooling that works in dev, custom and UAT builds. Trace, catch slowness, and export traces for Perfetto.
 
@@ -33,7 +33,8 @@ Verified on an iPhone 13 Pro Max and a Pixel 7a (dev builds), through a producti
 - [x] Flag an issue with a bounded CPU profile, linked from the Perfetto export (`client.flag()`, `flagProfileMs`).
 - [x] Guard the profiler against runtime teardown: stops really stop Hermes sampling (RN 0.85 Android binds `disable()` to `enable`), and a ReactHost before-destroy guard stops it before reloads.
 - [x] Release tooling: release-it, conventional changelog, pack check, trusted-publishing workflow (see [releasing](releasing.md)).
-- [ ] First npm publication (0.6.0), then configure the trusted publisher. Hosts use a vendored tarball until then.
+- [x] First npm publication: `react-native-nitro-tracing@0.6.0`.
+- [ ] Configure the npm trusted publisher, so later releases run from the Release workflow.
 
 ### Polish
 

@@ -11,6 +11,7 @@ add_library(${PACKAGE_NAME} SHARED
         ../cpp/HybridTracing.cpp
         ../cpp/HybridRecording.cpp
         ../cpp/HybridTraceSpan.cpp
+        ../cpp/HermesSampling.cpp
         ../cpp/NativeConversions.cpp
         ../cpp/core/Recorder.cpp
         ../cpp/core/Retention.cpp
@@ -35,3 +36,14 @@ target_link_libraries(
         ${LOG_LIB}
         android                                   # <-- Android core
 )
+
+# Hermes C++ API, to stop the sampling profiler correctly (see cpp/HermesSampling.cpp).
+# Optional: without Hermes the library builds and disableHermesSampling() returns false.
+find_package(hermes-engine CONFIG)
+if(TARGET hermes-engine::hermesvm)
+  target_link_libraries(${PACKAGE_NAME} hermes-engine::hermesvm)
+  target_compile_definitions(${PACKAGE_NAME} PRIVATE NITRO_TRACING_HERMES=1)
+elseif(TARGET hermes-engine::libhermes)
+  target_link_libraries(${PACKAGE_NAME} hermes-engine::libhermes)
+  target_compile_definitions(${PACKAGE_NAME} PRIVATE NITRO_TRACING_HERMES=1)
+endif()

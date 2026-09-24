@@ -134,7 +134,7 @@ Attaching the plugin does not start sampling. Profiles start from:
 - The inspector's **Tools**.
 - `autoProfile: true`, which samples every recording. Avoid it in development; see [troubleshooting](troubleshooting.md#the-app-aborts-on-reload-while-profiling).
 
-Only one plugin can own the process-wide Hermes sampler. Each profile appears as a `hermes.profile` span. A `hermes.profile.saved` mark carries the `.cpuprofile` path, and `shareProfile()` shares the file.
+Only one plugin can own the process-wide Hermes sampler. After each stop the plugin also calls `Tracing.disableHermesSampling()`, because on React Native 0.85 Android the profiler's own stop restarts sampling (see [troubleshooting](troubleshooting.md#the-app-aborts-on-reload-while-profiling)). Each profile appears as a `hermes.profile` span. A `hermes.profile.saved` mark carries the `.cpuprofile` path, and `shareProfile()` shares the file.
 
 ## Writing a collector
 

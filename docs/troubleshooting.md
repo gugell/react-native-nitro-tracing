@@ -2,9 +2,14 @@
 
 ## The app aborts on reload while profiling
 
-The crash is `invalid pthread_t passed to pthread_kill` on the `hermes-sampling` thread. Hermes' sampling profiler is process-wide. If a development reload (Fast Refresh full reload, Metro restart, dev menu Reload) tears down the JS runtime while it samples, the sampler signals a thread that no longer exists.
+The crash is `invalid pthread_t passed to pthread_kill` on the `hermes-sampling` thread (Android). Hermes' sampling profiler is process-wide. If a reload (Fast Refresh full reload, Metro restart, dev menu Reload) tears down the JS runtime while it samples, the sampler signals a thread that no longer exists.
 
-Keep `autoProfile` off in development and profile on demand: **Flag** (bounded, 10 s by default) or the inspector's Tools. Do not reload during a profile.
+On React Native 0.85, Android's `HermesSamplingProfiler.disable()` is bound to the native _enable_ function. So `react-native-release-profiler`'s stop saves the file and restarts sampling, which then runs until the process dies. The package works around both:
+
+- after every profile stop, the release-profiler plugin calls `Tracing.disableHermesSampling()`, which uses the Hermes C++ API directly;
+- a guard registered on the `ReactHost` stops sampling before each reload or destroy, while the JS thread is still alive.
+
+Keep `autoProfile` off in development anyway: continuous sampling skews the measurements.
 
 ## `A release profiler session is already active`
 

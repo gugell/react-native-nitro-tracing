@@ -54,6 +54,7 @@ namespace margelo::nitro::nitrotracing {
     public:
       // Methods
       virtual std::shared_ptr<HybridRecordingSpec> startRecording(const RecordingOptions& options) = 0;
+      virtual bool disableHermesSampling() = 0;
 
     protected:
       // Hybrid Setup

@@ -20,9 +20,23 @@ export interface ReleaseProfilerPlugin extends TracePlugin {
 }
 // Hermes profiling is process-wide, so two plugin instances must not compete.
 let owner: object | undefined
+/** Stops Hermes sampling for real; on RN 0.85 Android the profiler's own stop restarts it. */
+const stopHermesSampler = () => {
+  try {
+    const { Tracing } = require('../index') as typeof import('../index')
+    Tracing.disableHermesSampling()
+  } catch {
+    // No native module (tests, non-native hosts): nothing is sampling.
+  }
+}
+export interface ReleaseProfilerOptions {
+  /** Runs after every stop. Defaults to Tracing.disableHermesSampling(). */
+  stopSampler?: () => void
+}
 /** Attach manual Hermes profile controls to a recording. */
 export function createReleaseProfilerPlugin(
-  api: ReleaseProfilerApi
+  api: ReleaseProfilerApi,
+  options: ReleaseProfilerOptions = {}
 ): ReleaseProfilerPlugin {
   const identity = {}
   let context: PluginContext | undefined
@@ -93,6 +107,7 @@ export function createReleaseProfilerPlugin(
           span?.end('error')
           throw error
         } finally {
+          ;(options.stopSampler ?? stopHermesSampler)()
           active = false
           if (owner === identity) owner = undefined
           span = undefined

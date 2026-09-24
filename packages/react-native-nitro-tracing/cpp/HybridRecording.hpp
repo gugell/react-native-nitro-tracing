@@ -1,6 +1,8 @@
 #pragma once
 #include "HybridRecordingSpec.hpp"
+#include "core/NativeSampler.hpp"
 #include "core/Recorder.hpp"
+#include <mutex>
 namespace margelo::nitro::nitrotracing {
 class HybridRecording final : public HybridRecordingSpec {
 public:
@@ -14,10 +16,15 @@ public:
   RecordingStats getStats() override;
   void stop() override;
   std::shared_ptr<Promise<std::string>> exportJson() override;
+  std::shared_ptr<Promise<std::string>> exportTraceEvents() override;
+  void startNativeSampling(const NativeSamplingOptions &options) override;
+  void stopNativeSampling() override;
   size_t getExternalMemorySize() noexcept override;
   void dispose() override;
 
 private:
   std::shared_ptr<tracingcore::Recorder> recorder_;
+  std::mutex samplerMutex_;
+  std::unique_ptr<tracingcore::NativeSampler> sampler_;
 };
 } // namespace margelo::nitro::nitrotracing

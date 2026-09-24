@@ -1,4 +1,5 @@
 #include "Recorder.hpp"
+#include "NativeSampler.hpp"
 #include "TraceJson.hpp"
 #include <cassert>
 #include <iostream>
@@ -7,6 +8,20 @@
 using namespace margelo::nitro::tracingcore;
 Context ctx(std::string name = "upload") { return {name, "job", {{"safe", "value"}}}; }
 int main() {
+  {
+    // Metric samples fill at most half the buffer; the rest stays for spans and marks.
+    Recorder mixed({10, 1024 * 1024, 10, 1000});
+    for (int i = 0; i < 4; ++i)
+      mixed.mark(ctx());
+    for (int i = 0; i < 50; ++i)
+      mixed.metric(ctx(), i, "count");
+    auto page = mixed.read(0, 100);
+    size_t marks = 0, metrics = 0;
+    for (auto& e : page.events)
+      std::holds_alternative<MarkData>(e.data) ? ++marks : ++metrics;
+    assert(marks == 4 && metrics == 5);
+    assert(std::get<MetricData>(page.events.back().data).value == 49);
+  }
   double clock = 100;
   Recorder r({100, 1024 * 1024, 10, 1000}, [&] { return clock; });
   auto a = r.startSpan(ctx());
@@ -90,4 +105,45 @@ int main() {
   }
   std::cout << "Host 10000 span pairs: " << Recorder::monotonicMilliseconds() - start << "ms\n";
   std::cout << json << '\n';
+
+  // Trace Event export: overlapping siblings get separate lanes, nested spans share one.
+  double t = 0;
+  Recorder lanes({100, 1024 * 1024, 10, 1000}, [&] { return t; });
+  const Context net{"GET /a", "", {{"source", "network"}}};
+  lanes.recordSpan(net, "", 0, 100, Outcome::Success);
+  lanes.recordSpan(net, "", 50, 100, Outcome::Error); // overlaps the first: second lane
+  lanes.recordSpan({"parent", "", {}}, "", 0, 100, Outcome::Success);
+  lanes.recordSpan({"child", "", {}}, "", 10, 20, Outcome::Success); // nested: same lane
+  lanes.metric({"process.memory", "", {{"source", "native"}}}, 42.5, "MB");
+  const auto trace = exportTraceEvents(lanes.snapshot());
+  assert(trace.find("\"traceEvents\":[") != std::string::npos);
+  assert(trace.find("\"name\":\"network #2\"") != std::string::npos);
+  assert(trace.find("\"name\":\"app #2\"") == std::string::npos);
+  assert(trace.find("\"name\":\"process.memory (MB)\",\"cat\":\"native\",\"ph\":\"C\"") != std::string::npos);
+  assert(trace.find("\"ts\":50000,\"dur\":100000") != std::string::npos);
+
+  // Frame windows: explicit 16.7 ms interval, one slow (40 ms) and one frozen (800 ms) gap.
+  auto &frames = FrameMonitor::instance();
+  bool enabled = false;
+  frames.setToggle([&](bool on) { enabled = on; });
+  assert(frames.acquire() && enabled);
+  const double v = 1.0 / 60;
+  for (double at : {1.0, 1.0 + v, 1.0 + 2 * v, 1.0 + 2 * v + 0.040, 1.0 + 2 * v + 0.840})
+    frames.onFrame(at, v);
+  const auto window = frames.take();
+  assert(window.frames == 4 && window.slow == 1 && window.frozen == 1 && window.maxGapMs > 799);
+  assert(frames.take().frames == 0);
+  frames.release();
+  assert(!enabled);
+
+  // Sampler thread writes process metrics and stops cleanly with its recording.
+  auto sampled = std::make_shared<Recorder>(Config{100, 1024 * 1024, 10, 1000});
+  {
+    NativeSampler sampler(sampled, 20, false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(70));
+  }
+  const auto samples = sampled->read(0, 100).events;
+  assert(samples.size() >= 2 && samples[0].context.name == "process.cpu");
+  assert(NativeSampler::processMemoryBytes() > 0 && NativeSampler::processCpuMs() > 0);
+  std::cout << "Trace export, frame window and sampler checks passed\n";
 }

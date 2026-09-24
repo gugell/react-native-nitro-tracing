@@ -29,6 +29,8 @@ namespace margelo::nitro::nitrotracing { struct TracePage; }
 namespace margelo::nitro::nitrotracing { struct ReadOptions; }
 // Forward declaration of `RecordingStats` to properly resolve imports.
 namespace margelo::nitro::nitrotracing { struct RecordingStats; }
+// Forward declaration of `NativeSamplingOptions` to properly resolve imports.
+namespace margelo::nitro::nitrotracing { struct NativeSamplingOptions; }
 
 #include <memory>
 #include "HybridTraceSpanSpec.hpp"
@@ -41,6 +43,7 @@ namespace margelo::nitro::nitrotracing { struct RecordingStats; }
 #include <NitroModules/Promise.hpp>
 #include "ReadOptions.hpp"
 #include "RecordingStats.hpp"
+#include "NativeSamplingOptions.hpp"
 
 namespace margelo::nitro::nitrotracing {
 
@@ -81,6 +84,9 @@ namespace margelo::nitro::nitrotracing {
       virtual RecordingStats getStats() = 0;
       virtual void stop() = 0;
       virtual std::shared_ptr<Promise<std::string>> exportJson() = 0;
+      virtual std::shared_ptr<Promise<std::string>> exportTraceEvents() = 0;
+      virtual void startNativeSampling(const NativeSamplingOptions& options) = 0;
+      virtual void stopNativeSampling() = 0;
 
     protected:
       // Hybrid Setup

@@ -22,6 +22,9 @@ namespace margelo::nitro::nitrotracing {
       prototype.registerHybridMethod("getStats", &HybridRecordingSpec::getStats);
       prototype.registerHybridMethod("stop", &HybridRecordingSpec::stop);
       prototype.registerHybridMethod("exportJson", &HybridRecordingSpec::exportJson);
+      prototype.registerHybridMethod("exportTraceEvents", &HybridRecordingSpec::exportTraceEvents);
+      prototype.registerHybridMethod("startNativeSampling", &HybridRecordingSpec::startNativeSampling);
+      prototype.registerHybridMethod("stopNativeSampling", &HybridRecordingSpec::stopNativeSampling);
     });
   }
 

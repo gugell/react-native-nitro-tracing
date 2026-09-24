@@ -15,8 +15,10 @@ tracingcore::Context toCore(const std::string &name, const std::string &id, cons
   return c;
 }
 tracingcore::Config toCore(const RecordingOptions &o) {
-  return {checkedInteger(o.maxEvents, 100000, "maxEvents"), checkedInteger(o.maxBytes, 67108864, "maxBytes"),
-          checkedInteger(o.maxActiveSpans, 10000, "maxActiveSpans"), o.spanTimeoutMs};
+  // Range-checked above, so the casts are safe where size_t is 32-bit (armeabi-v7a).
+  return {static_cast<size_t>(checkedInteger(o.maxEvents, 100000, "maxEvents")),
+          static_cast<size_t>(checkedInteger(o.maxBytes, 67108864, "maxBytes")),
+          static_cast<size_t>(checkedInteger(o.maxActiveSpans, 10000, "maxActiveSpans")), o.spanTimeoutMs};
 }
 tracingcore::Outcome toCore(SpanOutcome o) {
   switch (o) {

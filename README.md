@@ -89,15 +89,15 @@ The optional higher-level client supplies `trace.mark`, `trace.metric`, `trace.m
 
 ## Plugins
 
-| Entry point         | Purpose                                                            | Dependency                                        |
-| ------------------- | ------------------------------------------------------------------ | ------------------------------------------------- |
-| `/performance`      | Observe marks, measures and metrics with their original timestamps | `react-native-performance`                        |
-| `/sentry`           | Capture SDK spans locally and/or export retained spans             | Optional injected `@sentry/react-native` 8.27.x   |
-| `/release-profiler` | Manually record and share a Hermes CPU profile                     | Optional injected `react-native-release-profiler` |
-| `/plugins`          | Implement custom sources/exporters                                 | None                                              |
-| `/expo`             | Dev menu and native file sharing                                   | Optional Expo modules                             |
-| `/react`            | Inspector component                                                | React Native                                      |
-| `/client`           | Recording lifecycle and UI coordination                            | Performance plugin by default                     |
+| Entry point         | Purpose                                                            | Dependency                                             |
+| ------------------- | ------------------------------------------------------------------ | ------------------------------------------------------ |
+| `/performance`      | Observe marks, measures and metrics with their original timestamps | `react-native-performance`                             |
+| `/sentry`           | Capture SDK spans locally and/or export retained spans             | Optional injected `@sentry/react-native` 7.11.x or 8.x |
+| `/release-profiler` | Manually record and share a Hermes CPU profile                     | Optional injected `react-native-release-profiler`      |
+| `/plugins`          | Implement custom sources/exporters                                 | None                                                   |
+| `/expo`             | Dev menu and native file sharing                                   | Optional Expo modules                                  |
+| `/react`            | Inspector component                                                | React Native                                           |
+| `/client`           | Recording lifecycle and UI coordination                            | Performance plugin by default                          |
 
 The client enables React Native Performance by default; use `performance: false` for native-only instrumentation, or inject `{ performance, PerformanceObserver }`. The source library owns its global entry buffer; this plugin never clears another consumer's entries. Configure source retention if your app generates a large volume of marks.
 

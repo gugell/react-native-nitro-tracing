@@ -84,7 +84,7 @@
     "react-native": "*",
     "react-native-nitro-modules": "^0.37.1",
     "react-native-performance": ">=6",
-    "@sentry/react-native": ">=8.27.0 <9",
+    "@sentry/react-native": ">=7.11.0 <9",
     "expo-dev-client": ">=56",
     "expo-file-system": ">=56",
     "expo-sharing": ">=56"

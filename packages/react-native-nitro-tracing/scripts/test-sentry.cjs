@@ -2,7 +2,10 @@ const assert = require('node:assert/strict')
 const { createRequire } = require('node:module')
 // Exercise the exact JS tracing engine installed by the React Native SDK.
 const sentry = createRequire(
-  require.resolve('@sentry/react-native/package.json')
+  require('node:fs').realpathSync(
+    process.env.SENTRY_SDK_PACKAGE_PATH ||
+      require.resolve('@sentry/react-native/package.json')
+  )
 )('@sentry/core')
 const { createSentryPlugin } = require('../lib/commonjs/sentry.cjs')
 const envelopes = []

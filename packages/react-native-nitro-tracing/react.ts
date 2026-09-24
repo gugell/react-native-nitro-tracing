@@ -1,4 +1,5 @@
 export { TraceInspector } from './src/react/TraceInspector'
+export { TraceOverlay } from './src/react/TraceOverlay'
 export { defaultLabels } from './src/react/labels'
 export type {
   InspectorLabels,

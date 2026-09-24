@@ -1,6 +1,6 @@
 {
   "name": "react-native-nitro-tracing",
-  "version": "0.2.1",
+  "version": "0.5.6",
   "description": "Bounded native performance recordings and explicit spans for React Native",
   "main": "lib/commonjs/index.cjs",
   "module": "lib/module/index.mjs",
@@ -17,6 +17,7 @@
     "android/fix-prefab.gradle",
     "android/CMakeLists.txt",
     "android/src",
+    "android/proguard-rules.pro",
     "cpp",
     "ios/**/*.h",
     "ios/**/*.m",
@@ -62,6 +63,7 @@
   "devDependencies": {
     "@babel/preset-env": "catalog:",
     "@babel/preset-typescript": "^7.25.0",
+    "@legendapp/list": "3.4.0",
     "@sentry/react-native": "catalog:",
     "@types/jest": "catalog:",
     "@types/node": "^22.0.0",
@@ -71,11 +73,13 @@
     "esbuild": "0.28.2",
     "expo-dev-client": "~56.0.27",
     "expo-file-system": "~56.0.11",
+    "expo-glass-effect": "56.0.4",
     "expo-sharing": "~56.0.26",
     "jest": "catalog:",
     "nitrogen": "catalog:",
     "react": "catalog:",
     "react-native": "catalog:",
+    "react-native-bottom-tabs": "1.4.0",
     "react-native-nitro-modules": "catalog:",
     "react-native-performance": "catalog:",
     "react-native-safe-area-context": "~5.7.0",
@@ -83,6 +87,7 @@
     "typescript": "catalog:"
   },
   "peerDependencies": {
+    "@legendapp/list": ">=3.4.0 <4",
     "@sentry/react-native": ">=7.11.0 <9",
     "expo-dev-client": ">=56",
     "expo-file-system": ">=56",
@@ -91,7 +96,9 @@
     "react-native": "*",
     "react-native-nitro-modules": "^0.37.1",
     "react-native-performance": ">=6",
-    "react-native-safe-area-context": ">=5.7.0 <6"
+    "react-native-safe-area-context": ">=5.7.0 <6",
+    "react-native-bottom-tabs": ">=1.4.0 <2",
+    "expo-glass-effect": ">=56"
   },
   "prettier": {
     "quoteProps": "consistent",
@@ -118,6 +125,15 @@
       "optional": true
     },
     "react-native-safe-area-context": {
+      "optional": true
+    },
+    "@legendapp/list": {
+      "optional": true
+    },
+    "react-native-bottom-tabs": {
+      "optional": true
+    },
+    "expo-glass-effect": {
       "optional": true
     }
   },
@@ -179,9 +195,5 @@
       "default": "./lib/module/release-profiler.mjs"
     },
     "./package.json": "./package.json"
-  },
-  "dependencies": {
-    "@legendapp/list": "3.4.0",
-    "@legendapp/state": "2.1.15"
   }
 }

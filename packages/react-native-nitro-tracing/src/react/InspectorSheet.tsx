@@ -4,70 +4,60 @@ import {
   Modal,
   Platform,
   Pressable,
-  Text,
+  StyleSheet,
   View,
 } from 'react-native'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
-import { Button, palette, ui } from './InspectorControls'
+import { apple, NavBar, palette, TextButton } from './InspectorControls'
+/**
+ * iOS page sheet: nav bar with Cancel and an optional primary action, grouped body.
+ * Mount only while open; a pre-mounted Modal inside the inspector's Modal presents unreliably.
+ */
 export function InspectorSheet({
-  visible,
   title,
   close,
   closeLabel,
+  primary,
   children,
 }: {
-  visible: boolean
   title: string
   close: () => void
   closeLabel: string
+  primary?: { label: string; onPress: () => void; disabled?: boolean }
   children: ReactNode
 }) {
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={close}
-    >
+    <Modal visible transparent animationType="slide" onRequestClose={close}>
       <SafeAreaProvider>
         <KeyboardAvoidingView
-          style={{
-            flex: 1,
-            justifyContent: 'flex-end',
-            backgroundColor: '#0008',
-          }}
+          style={styles.scrim}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={closeLabel}
             onPress={close}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-            }}
+            style={StyleSheet.absoluteFill}
           />
           <SafeAreaView
             edges={['bottom', 'left', 'right']}
-            style={{
-              height: '85%',
-              backgroundColor: palette.bg,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
-              overflow: 'hidden',
-            }}
+            style={styles.sheet}
           >
-            <View style={ui.header}>
-              <View style={ui.spread}>
-                <Text accessibilityRole="header" style={ui.title}>
-                  {title}
-                </Text>
-                <Button label={closeLabel} onPress={close} />
-              </View>
-            </View>
+            <View style={styles.grabber} />
+            <NavBar
+              left={<TextButton label={closeLabel} onPress={close} />}
+              title={title}
+              right={
+                primary && (
+                  <TextButton
+                    label={primary.label}
+                    onPress={primary.onPress}
+                    disabled={primary.disabled}
+                    bold
+                  />
+                )
+              }
+            />
             {children}
           </SafeAreaView>
         </KeyboardAvoidingView>
@@ -75,3 +65,25 @@ export function InspectorSheet({
     </Modal>
   )
 }
+const styles = StyleSheet.create({
+  scrim: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: palette.scrim,
+  },
+  sheet: {
+    height: '88%',
+    backgroundColor: apple.grouped,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    overflow: 'hidden',
+  },
+  grabber: {
+    alignSelf: 'center',
+    width: 36,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#c7c7cc',
+    marginTop: 6,
+  },
+})

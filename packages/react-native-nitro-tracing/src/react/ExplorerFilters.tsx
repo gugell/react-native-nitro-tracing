@@ -1,16 +1,18 @@
 import React, { useState } from 'react'
-import { ScrollView, Text, View } from 'react-native'
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import type { Viewer } from './useTraceViewer'
 import type { InspectorTranslator } from './labels'
-import { sourceOf, defaultQuery, type Sort, type Query } from './explorerModel'
-import { Button, Field, ui } from './InspectorControls'
+import { sourceOf, defaultQuery, type Query } from './explorerModel'
+import { apple, palette, Row, Section } from './InspectorControls'
 import { InspectorSheet } from './InspectorSheet'
 const toggle = (values: string[], value: string) =>
   values.includes(value)
     ? values.filter((item) => item !== value)
     : [...values, value]
+
+/** Draft filters: Apply commits them, Cancel discards them. Sorting lives in its own menu. */
 export function ExplorerFilters({
-  v: viewer,
+  v,
   t,
   close,
 }: {
@@ -18,127 +20,132 @@ export function ExplorerFilters({
   t: InspectorTranslator
   close: () => void
 }) {
-  const [draft, setDraft] = useState(viewer.query)
-  const v = {
-    ...viewer,
-    query: draft,
-    updateQuery: (patch: Partial<Query>) =>
-      setDraft((previous) => ({ ...previous, ...patch })),
-  }
+  const [draft, setDraft] = useState(v.query)
+  const update = (patch: Partial<Query>) =>
+    setDraft((previous) => ({ ...previous, ...patch }))
   const sources = [
     ...new Set([...v.page.spans, ...v.page.marks].map(sourceOf)),
   ].sort()
-  const sorts: Sort[] =
+  const outcomes =
     v.mode === 'traces'
-      ? ['newest', 'oldest', 'longest', 'errors', 'count', 'name']
-      : v.mode === 'spans'
-        ? ['newest', 'oldest', 'longest', 'shortest', 'name']
-        : ['newest', 'oldest', 'name']
+      ? ['error', 'success']
+      : ['success', 'error', 'cancelled', 'interrupted']
   const invalid =
-    [v.query.from, v.query.to, v.query.minDuration].some(
+    [draft.from, draft.to, draft.minDuration].some(
       (value) =>
         value !== '' && (!Number.isFinite(Number(value)) || Number(value) < 0)
     ) ||
-    Boolean(
-      v.query.from && v.query.to && Number(v.query.from) > Number(v.query.to)
-    )
+    Boolean(draft.from && draft.to && Number(draft.from) > Number(draft.to))
+  const field = (
+    key: 'minDuration' | 'from' | 'to' | 'correlation',
+    numeric = true
+  ) => (
+    <View style={styles.field}>
+      <Text style={styles.fieldLabel}>{t(key)}</Text>
+      <TextInput
+        accessibilityLabel={t(key)}
+        value={draft[key]}
+        onChangeText={(value) => update({ [key]: value })}
+        placeholder="—"
+        placeholderTextColor={apple.secondary}
+        keyboardType={numeric ? 'decimal-pad' : 'default'}
+        autoCapitalize="none"
+        autoCorrect={false}
+        style={styles.fieldInput}
+      />
+    </View>
+  )
   return (
     <InspectorSheet
-      visible
       title={t('filters')}
       close={close}
       closeLabel={t('cancel')}
+      primary={{
+        label: t('applyFilters'),
+        disabled: invalid,
+        onPress: () => {
+          v.updateQuery(draft)
+          close()
+        },
+      }}
     >
       <ScrollView
-        contentContainerStyle={ui.content}
         keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: 32 }}
       >
-        <Text style={ui.heading}>{t('sort')}</Text>
-        <View style={ui.row}>
-          {sorts.map((sort) => (
-            <Button
-              key={sort}
-              label={t(sort)}
-              selected={sort === v.query.sort}
-              onPress={() => v.updateQuery({ sort })}
-            />
-          ))}
-        </View>
         {v.mode !== 'marks' && (
-          <>
-            <Text style={ui.heading}>{t('outcome')}</Text>
-            <View style={ui.row}>
-              {(v.mode === 'traces'
-                ? ['error', 'success']
-                : ['success', 'error', 'cancelled', 'interrupted']
-              ).map((outcome) => (
-                <Button
-                  key={outcome}
-                  label={t(
-                    outcome === 'success' && v.mode === 'traces'
-                      ? 'noErrors'
-                      : (outcome as 'success')
-                  )}
-                  selected={v.query.outcomes.includes(outcome)}
-                  onPress={() =>
-                    v.updateQuery({
-                      outcomes: toggle(v.query.outcomes, outcome),
-                    })
-                  }
-                />
-              ))}
-            </View>
-            <Field
-              label={t('minDuration')}
-              numeric
-              value={v.query.minDuration}
-              onChange={(minDuration) => v.updateQuery({ minDuration })}
-            />
-          </>
+          <Section header={t('outcome')}>
+            {outcomes.map((outcome, index) => (
+              <Row
+                key={outcome}
+                title={t(
+                  outcome === 'success' && v.mode === 'traces'
+                    ? 'noErrors'
+                    : (outcome as 'success')
+                )}
+                checked={draft.outcomes.includes(outcome)}
+                onPress={() =>
+                  update({ outcomes: toggle(draft.outcomes, outcome) })
+                }
+                last={index === outcomes.length - 1}
+              />
+            ))}
+          </Section>
         )}
-        <Text style={ui.heading}>{t('source')}</Text>
-        <View style={ui.row}>
-          {sources.map((source) => (
-            <Button
-              key={source}
-              label={source}
-              selected={v.query.sources.includes(source)}
-              onPress={() =>
-                v.updateQuery({
-                  sources: toggle(v.query.sources, source),
-                })
-              }
-            />
-          ))}
-        </View>
-        <Field
-          label={t('from')}
-          numeric
-          value={v.query.from}
-          onChange={(from) => v.updateQuery({ from })}
-        />
-        <Field
-          label={t('to')}
-          numeric
-          value={v.query.to}
-          onChange={(to) => v.updateQuery({ to })}
-        />
-        <Field
-          label={t('correlation')}
-          value={v.query.correlation}
-          onChange={(correlation) => v.updateQuery({ correlation })}
-        />
-        {invalid && <Text style={ui.error}>{t('invalidRange')}</Text>}
-        <Button label={t('reset')} onPress={() => setDraft(defaultQuery())} />
-        <Button
-          label={t('applyFilters')}
-          disabled={invalid}
-          onPress={() => {
-            viewer.updateQuery(draft)
-            close()
-          }}
-        />
-      </ScrollView>{' '}
+        {sources.length > 0 && (
+          <Section header={t('source')}>
+            {sources.map((source, index) => (
+              <Row
+                key={source}
+                title={source}
+                checked={draft.sources.includes(source)}
+                onPress={() =>
+                  update({ sources: toggle(draft.sources, source) })
+                }
+                last={index === sources.length - 1}
+              />
+            ))}
+          </Section>
+        )}
+        <Section
+          header={t('range')}
+          footer={invalid ? t('invalidRange') : undefined}
+        >
+          {v.mode !== 'marks' && field('minDuration')}
+          {field('from')}
+          {field('to')}
+          {field('correlation', false)}
+        </Section>
+        <Section>
+          <Row
+            title={t('reset')}
+            tint={palette.error}
+            onPress={() => setDraft(defaultQuery())}
+            last
+          />
+        </Section>
+      </ScrollView>
     </InspectorSheet>
   )
 }
+
+const styles = StyleSheet.create({
+  field: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 44,
+    paddingHorizontal: 16,
+    backgroundColor: apple.card,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: apple.separator,
+    gap: 12,
+  },
+  fieldLabel: { flex: 1, fontSize: 17, color: palette.text },
+  fieldInput: {
+    minWidth: 110,
+    fontSize: 17,
+    color: palette.text,
+    textAlign: 'right',
+    paddingVertical: 8,
+  },
+})

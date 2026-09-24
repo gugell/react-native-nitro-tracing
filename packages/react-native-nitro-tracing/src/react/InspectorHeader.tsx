@@ -1,11 +1,26 @@
-import React, { useState } from 'react'
-import { Alert, Text, View } from 'react-native'
-import { useSelector } from '@legendapp/state/react'
+import React from 'react'
+import { Alert, StyleSheet, Text, View } from 'react-native'
+import { useStore } from './store'
+import { useMenu } from './native'
 import type { Viewer } from './useTraceViewer'
 import type { InspectorTranslator } from './labels'
-import { Button, ui } from './InspectorControls'
-import { InspectorSheet } from './InspectorSheet'
-/** Only the status area subscribes to the one-second telemetry clock. */
+import { apple, Banner, NavBar, palette, TextButton } from './InspectorControls'
+
+const titleKey = {
+  trace: 'traces',
+  span: 'spans',
+  metric: 'metrics',
+  mark: 'marks',
+} as const
+const tabKey = {
+  overview: 'overview',
+  timeline: 'timeline',
+  explore: 'explore',
+  metrics: 'metrics',
+  tools: 'tools',
+} as const
+
+/** Navigation bar, status line and live-update banner. Only this subscribes to the 1 s telemetry tick. */
 export function InspectorHeader({
   v: viewer,
   t,
@@ -13,106 +28,134 @@ export function InspectorHeader({
   v: Viewer
   t: InspectorTranslator
 }) {
-  const live = useSelector(viewer.telemetry)
+  const live = useStore(viewer.telemetry, (s) => s)
   const v = { ...viewer, ...live }
   const client = v.client
-  const [actions, setActions] = useState(false)
-  const newRecording = () =>
+  const menu = useMenu()
+  const canShare = client.canShare && !!v.stats && !v.busy
+  const startNew = () =>
     Alert.alert(t('replaceTitle'), t('replaceDescription'), [
       { text: t('cancel'), style: 'cancel' },
       { text: t('start'), style: 'destructive', onPress: v.start },
     ])
+  const seconds = Math.round((v.stats?.nowMs ?? 0) / 1000)
+  const newEvents = v.pending
+    ? Math.max(0, v.pending.nextSequence - v.page.nextSequence)
+    : 0
   return (
-    <View style={ui.header}>
-      <View style={ui.spread}>
-        {v.detail && <Button label={t('back')} onPress={v.back} />}
-        <Text style={ui.title}>
-          {v.detail
-            ? t(
-                v.detail.kind === 'trace'
-                  ? 'traces'
-                  : v.detail.kind === 'span'
-                    ? 'spans'
-                    : v.detail.kind === 'metric'
-                      ? 'metrics'
-                      : 'marks'
-              )
-            : t('title')}
-        </Text>
-        <Button label={t('close')} onPress={client.close} />
-      </View>
-      <View style={ui.spread}>
-        <Text style={ui.muted}>
-          {v.recording ? '●' : '○'} {t(v.recording ? 'recording' : 'stopped')} ·{' '}
-          {((v.stats?.nowMs ?? 0) / 1000).toFixed(0)}s ·{' '}
-          {v.stats?.eventCount ?? 0} {t('events')}
-        </Text>
-        <Button
-          label={t('actions')}
-          onPress={() => setActions(!actions)}
-          selected={actions}
-        />
-      </View>
-      <InspectorSheet
-        visible={actions}
-        title={t('actions')}
-        close={() => setActions(false)}
-        closeLabel={t('close')}
-      >
-        <View style={ui.content}>
-          <Button
-            label={t('stop')}
-            onPress={v.stop}
-            disabled={v.busy || !v.recording}
-          />
-          <Button
-            label={t('exportAll')}
-            onPress={v.export}
-            disabled={v.busy || !client.canShare || !v.stats}
-          />
-          <Button label={t('start')} onPress={newRecording} disabled={v.busy} />
-          <Button
-            label={t('tools')}
-            onPress={() => {
-              v.setTab('playground')
-              setActions(false)
-            }}
-          />
-        </View>
-      </InspectorSheet>
+    <View style={styles.root}>
+      <NavBar
+        left={
+          v.detail ? (
+            <TextButton label={`‹ ${t('back')}`} onPress={v.back} />
+          ) : (
+            <TextButton label={t('done')} onPress={client.close} bold />
+          )
+        }
+        title={t(v.detail ? titleKey[v.detail.kind] : tabKey[v.tab])}
+        right={
+          <>
+            <TextButton
+              icon="⇪"
+              accessibilityLabel={t('share')}
+              onPress={() =>
+                menu.open({
+                  title: t('shareTitle'),
+                  cancelLabel: t('cancel'),
+                  options: [
+                    {
+                      label: t('sharePerfetto'),
+                      onPress: v.sharePerfetto,
+                      disabled: !canShare,
+                    },
+                    {
+                      label: t('exportAll'),
+                      onPress: v.export,
+                      disabled: !canShare,
+                    },
+                    ...(v.profilePath && client.canShareProfile
+                      ? [{ label: t('shareProfile'), onPress: v.shareProfile }]
+                      : []),
+                  ],
+                })
+              }
+              disabled={!canShare && !v.profilePath}
+            />
+            <TextButton
+              icon="⋯"
+              accessibilityLabel={t('more')}
+              onPress={() =>
+                menu.open({
+                  cancelLabel: t('cancel'),
+                  options: [
+                    v.recording
+                      ? { label: t('stop'), onPress: v.stop, destructive: true }
+                      : { label: t('start'), onPress: v.start },
+                    ...(v.recording
+                      ? [{ label: t('startNew'), onPress: startNew }]
+                      : []),
+                    {
+                      label: t(v.paused ? 'resumeUpdates' : 'pauseUpdates'),
+                      onPress: v.togglePause,
+                    },
+                    { label: t('tools'), onPress: () => v.setTab('tools') },
+                  ],
+                })
+              }
+            />
+          </>
+        }
+      />
+      <Text style={styles.status} numberOfLines={1}>
+        <Text style={{ color: v.recording ? palette.error : apple.secondary }}>
+          {v.recording ? '●' : '○'}
+        </Text>{' '}
+        {t(v.recording ? 'recording' : 'stopped')} · {Math.floor(seconds / 60)}:
+        {String(seconds % 60).padStart(2, '0')} · {v.stats?.eventCount ?? 0}{' '}
+        {t('events')}
+        {v.screen ? ` · ${v.screen}` : ''}
+        {v.paused ? ` · ${t('frozen')}` : ''}
+      </Text>
       {(v.stats?.droppedEvents ?? 0) > 0 && (
-        <Text style={ui.error}>
+        <Text style={styles.warning}>
           {t('lostHistory', { count: v.stats!.droppedEvents })}
         </Text>
       )}
       {v.error && (
-        <Text selectable style={ui.error}>
+        <Text selectable style={styles.warning} numberOfLines={3}>
           {v.error}
         </Text>
       )}
-      {!v.detail && (
-        <>
-          <View style={ui.row}>
-            <Button
-              label={t(v.paused ? 'resumeUpdates' : 'pauseUpdates')}
-              selected={v.paused}
-              onPress={v.togglePause}
-            />
-            {v.pending && (
-              <Button
-                label={t('newEvents', {
-                  count: Math.max(
-                    0,
-                    v.pending.nextSequence - v.page.nextSequence
-                  ),
-                })}
-                onPress={v.apply}
-                disabled={v.paused}
-              />
-            )}
-          </View>
-        </>
+      {!v.detail && newEvents > 0 && !v.paused && (
+        <Banner
+          label={t('newEvents', { count: newEvents })}
+          onPress={v.apply}
+        />
       )}
+      {menu.element}
     </View>
   )
 }
+
+const styles = StyleSheet.create({
+  root: {
+    backgroundColor: apple.grouped,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: apple.separator,
+    paddingBottom: 8,
+  },
+  status: {
+    fontSize: 13,
+    color: apple.secondary,
+    textAlign: 'center',
+    paddingHorizontal: 16,
+    fontVariant: ['tabular-nums'],
+  },
+  warning: {
+    fontSize: 13,
+    color: palette.error,
+    textAlign: 'center',
+    paddingHorizontal: 16,
+    marginTop: 4,
+  },
+})

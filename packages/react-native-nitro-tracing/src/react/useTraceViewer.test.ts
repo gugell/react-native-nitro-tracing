@@ -66,12 +66,12 @@ it('updates observable counters without rerendering held content and applies que
     })
     expect(renders).toBe(heldRenders)
     expect(viewer.page.marks).toHaveLength(1)
-    expect(viewer.telemetry.stats.peek()?.eventCount).toBe(2)
-    expect(viewer.telemetry.pending.peek()?.nextSequence).toBe(2)
+    expect(viewer.telemetry.get().stats?.eventCount).toBe(2)
+    expect(viewer.telemetry.get().pending?.nextSequence).toBe(2)
     expect(readEvents.mock.calls.at(-1)?.[0].afterSequence).toBe(1)
     await act(async () => viewer.apply())
     expect(viewer.page.marks).toHaveLength(2)
-    expect(viewer.telemetry.pending.peek()).toBeUndefined()
+    expect(viewer.telemetry.get().pending).toBeUndefined()
     await act(async () => renderer.unmount())
     const reads = readEvents.mock.calls.length
     await act(async () => {

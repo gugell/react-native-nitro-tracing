@@ -1,6 +1,11 @@
 import type { SpanEvent, TracePage } from '../types'
 
-import { groupTraces, metricSeries, waterfall } from './viewerModel'
+import {
+  formatMetric,
+  groupTraces,
+  metricSeries,
+  waterfall,
+} from './viewerModel'
 const span = (overrides: Partial<SpanEvent>): SpanEvent => ({
   name: 'upload',
   correlationId: 'a',
@@ -138,4 +143,12 @@ it('shows metrics across all correlations and computes retained-sample percentil
     cancelled: 1,
     interrupted: 1,
   })
+})
+
+it('formats metric values with readable units', () => {
+  expect(formatMetric(3653, 'ms')).toBe('3.65 s')
+  expect(formatMetric(42.25, 'ms')).toBe('42.3 ms')
+  expect(formatMetric(1240, 'MB')).toBe('1.21 GB')
+  expect(formatMetric(301.4, '%')).toBe('301%')
+  expect(formatMetric(3, 'count')).toBe('3')
 })

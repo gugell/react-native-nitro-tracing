@@ -1,6 +1,7 @@
-import { useObservable } from '@legendapp/state/react'
+import { createStore } from './store'
 import { readSnapshot } from './readSnapshot'
 import {
+  useCallback,
   useEffect,
   useDeferredValue,
   useMemo,
@@ -21,13 +22,25 @@ import {
   type Trace,
 } from './explorerModel'
 import { recordingMetrics, operationMetrics } from './viewerModel'
+import {
+  buildTimeline,
+  currentScreen,
+  defaultBudgets,
+  summarizeTopics,
+  type Budgets,
+} from './topics'
 export type Metric = ReturnType<typeof recordingMetrics>[number]
 export type Detail =
   | { kind: 'trace'; value: Trace }
   | { kind: 'span'; value: SpanEvent }
   | { kind: 'mark'; value: MarkEvent }
   | { kind: 'metric'; value: Metric }
-export type Tab = 'overview' | 'explore' | 'metrics' | 'profiles' | 'playground'
+export type Tab = 'overview' | 'timeline' | 'explore' | 'metrics' | 'tools'
+export interface Telemetry {
+  stats?: RecordingStats
+  error?: string
+  pending?: Pick<TracePage, 'nextSequence' | 'earliestSequence'>
+}
 const empty = (): TracePage => ({
   spans: [],
   marks: [],
@@ -36,33 +49,32 @@ const empty = (): TracePage => ({
   earliestSequence: 0,
   droppedEvents: 0,
 })
-export const useTraceViewer = (client: TraceClient) => {
+export const useTraceViewer = (
+  client: TraceClient,
+  budgets?: Partial<Budgets>
+) => {
   const snapshot = useSyncExternalStore(
     client.subscribe,
     client.getSnapshot,
     client.getSnapshot
   )
-  const [tab, setTab] = useState<Tab>('explore')
+  const [tab, setTab] = useState<Tab>('overview')
   const [mode, setMode] = useState<ExplorerMode>('traces')
   const [page, setPage] = useState(empty)
-  const telemetry = useObservable<{
-    stats?: RecordingStats
-    error?: string
-    pending?: Pick<TracePage, 'nextSequence' | 'earliestSequence'>
-  }>({})
-  const setStats = (value: RecordingStats) => telemetry.stats.set(value)
-  const setError = (value: string | undefined) => telemetry.error.set(value)
+  const [telemetry] = useState(() => createStore<Telemetry>({}))
+  const setStats = (stats: RecordingStats) => telemetry.set({ stats })
+  const setError = (error: string | undefined) => telemetry.set({ error })
   const pendingPage = useRef<TracePage | undefined>(undefined)
   const setPending = (value: TracePage | undefined) => {
     pendingPage.current = value
-    telemetry.pending.set(
-      value
+    telemetry.set({
+      pending: value
         ? {
             nextSequence: value.nextSequence,
             earliestSequence: value.earliestSequence,
           }
-        : undefined
-    )
+        : undefined,
+    })
   }
   const [queries, setQueries] = useState<Record<ExplorerMode, Query>>({
     traces: defaultQuery(),
@@ -158,10 +170,29 @@ export const useTraceViewer = (client: TraceClient) => {
   }, [client, snapshot.visible])
   const traces = useMemo(() => buildTraces(page), [page.spans, page.marks])
   const metrics = useMemo(
-    () =>
-      tab === 'metrics' || tab === 'overview' ? recordingMetrics(page) : [],
+    () => (tab === 'explore' ? [] : recordingMetrics(page)),
     [page, tab]
   )
+  const collectors = snapshot.collectors
+  const { appReadyMs, screenMs, requestMs, stallMs } = {
+    ...defaultBudgets,
+    ...budgets,
+  }
+  const summary = useMemo(
+    () =>
+      summarizeTopics(page, collectors ?? [], {
+        appReadyMs,
+        screenMs,
+        requestMs,
+        stallMs,
+      }),
+    [page, collectors, appReadyMs, screenMs, requestMs, stallMs]
+  )
+  const timeline = useMemo(
+    () => (tab === 'timeline' ? buildTimeline(page, summary.issues) : []),
+    [page, summary.issues, tab]
+  )
+  const screen = useMemo(() => currentScreen(page), [page.marks])
   const operations = useMemo(
     () => (tab === 'metrics' ? operationMetrics(page.spans) : []),
     [page.spans, tab]
@@ -201,10 +232,11 @@ export const useTraceViewer = (client: TraceClient) => {
       })
   }
   const detail = details[details.length - 1]
-  const open = (next: Detail) => {
+  // Stable identity lets memoized list rows skip re-rendering on live ticks.
+  const open = useCallback((next: Detail) => {
     setHolding(true)
     setDetails((previous) => [...previous.slice(-31), next])
-  }
+  }, [])
   const showEvents = (mode: 'spans' | 'marks', patch: Partial<Query>) => {
     setTab('explore')
     setMode(mode)
@@ -228,9 +260,11 @@ export const useTraceViewer = (client: TraceClient) => {
     setMode,
     page,
     telemetry,
-    stats: telemetry.stats.peek(),
-    error: telemetry.error.peek(),
     traces,
+    topics: summary.topics,
+    issues: summary.issues,
+    timeline,
+    screen,
     results,
     query,
     updateQuery,
@@ -261,7 +295,6 @@ export const useTraceViewer = (client: TraceClient) => {
     paused,
     holding,
     setHolding,
-    pending: telemetry.pending.peek(),
     apply,
     togglePause: () => {
       if (paused) apply()
@@ -279,6 +312,7 @@ export const useTraceViewer = (client: TraceClient) => {
     start: () => act(client.start),
     stop: () => act(client.stop),
     export: () => act(client.export),
+    sharePerfetto: () => act(() => client.shareTrace('perfetto')),
     toggleProfile: () => act(client.toggleProfile),
     shareProfile: () => act(client.shareProfile),
     playground: () => act(client.playground),

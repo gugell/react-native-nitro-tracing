@@ -79,6 +79,20 @@ export const waterfall = (spans: SpanEvent[]) => {
       }
     })
 }
+const num = (value: number) =>
+  Math.abs(value) >= 100 ? value.toFixed(0) : value.toFixed(1)
+/** Human value with unit: 3653 ms → "3.65 s", 1240 MB → "1.21 GB". */
+export const formatMetric = (value: number, unit: string) => {
+  if (unit === 'ms' && Math.abs(value) >= 1000)
+    return `${(value / 1000).toFixed(2)} s`
+  if (unit === 'MB' && Math.abs(value) >= 1024)
+    return `${(value / 1024).toFixed(2)} GB`
+  if (unit === 'count') return value.toFixed(0)
+  if (unit === '%') return `${num(value)}%`
+  if (unit.endsWith('/s')) return `${num(value)}/s`
+  return `${num(value)} ${unit}`
+}
+
 export const metricSeries = (metrics: MetricEvent[]) => {
   const groups = new Map<string, MetricEvent[]>()
   for (const metric of metrics) {
@@ -103,6 +117,9 @@ export const metricSeries = (metrics: MetricEvent[]) => {
       peak: values[values.length - 1] ?? 0,
       p95: values[Math.max(0, Math.ceil(values.length * 0.95) - 1)] ?? 0,
       name,
+      /** Metric name without the unit suffix used for grouping. */
+      metric: retained[0].name,
+      unit: retained[0].unit,
       samples,
       retainedCount: retained.length,
       startMs: samples[0]?.timestampMs ?? 0,

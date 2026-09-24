@@ -12,7 +12,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm codegen && git diff --exit-code -- packages/react-native-nitro-tracing/nitrogen
-      - run: pnpm typecheck && pnpm test && pnpm test:native && pnpm build
+      - run: pnpm build && pnpm typecheck && pnpm test && pnpm test:native
       - run: pnpm --filter react-native-nitro-tracing test:sentry
       - run: pnpm exec prettier --check .
       - run: clang-format --dry-run --Werror packages/react-native-nitro-tracing/cpp/*.cpp packages/react-native-nitro-tracing/cpp/*.hpp packages/react-native-nitro-tracing/cpp/core/*.cpp packages/react-native-nitro-tracing/cpp/core/*.hpp packages/react-native-nitro-tracing/tests/*.cpp

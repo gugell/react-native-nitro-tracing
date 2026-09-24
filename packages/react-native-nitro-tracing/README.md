@@ -41,7 +41,7 @@ await client.dispose()
 
 The development menu gets a **Performance inspector** item. `client.open()` also opens it, including in an explicitly instrumented release build. The package does not gate itself on `__DEV__`: the consuming app decides when to include it. Registration uses Expo's `registerDevMenuItems`; compose your other custom entries if the app already owns that registration.
 
-The UI offers Overview, Traces, Metrics and Playground tabs, search, parent-child waterfalls, span details, and visible retention/truncation information. It polls only while open, with bounded display data. `labels` and `translate` props support localization. Playground generates deterministic examples; it is not an application benchmark.
+The UI offers Summary (issues and topics), Timeline, Explore and Metrics views, search, parent-child waterfalls, span details, and visible retention/truncation information. It polls only while open, with bounded display data. `labels` and `translate` props support localization. Playground generates deterministic examples; it is not an application benchmark.
 
 ## Native API
 
@@ -174,6 +174,72 @@ Pass `autoProfile: true` together with a `profiler` to `createTraceClient` to st
 Pass an optional `sink(line, entry)` to `createTraceClient` to retain formatted app logs and structured breadcrumbs. It receives explicit trace calls and observed Performance entries; native/Sentry-imported events stay in the recording without being echoed back as breadcrumbs. Sink failures are reported and never change measured work. String metrics retain their original value in sink output; nonnumeric values appear as native marks. Native attributes are bounded string values; sink attributes keep their original primitive types.
 
 Retention is bounded: the compatibility facade retains up to 512 operation IDs, 64 marks and 64 emitted measure names per ID. Stopping a recording clears correlation state, so restarting cannot create spans across recording boundaries. Native event budgets may evict older history.
+
+### Topics, issues and collectors
+
+The inspector opens on **Summary**. It lists issues first, meaning retained events over a local budget or with errors. Below them is one card per topic: Startup, Screens, Network, Responsiveness, Errors and Custom spans. A topic with no collector configured shows **Not tracked** and names the option that enables it, so a missing signal is not mistaken for a healthy one. Tapping a card opens Explore or Metrics filtered to that topic. **Timeline** lists events newest first, grouped under the screen visit in which they happened. Exports are in the Share (⇪) menu; recording controls, Freeze view and Tools (CPU profile, playground) are in the More (⋯) menu.
+
+```ts
+import {
+  createErrorsPlugin,
+  createNavigationPlugin,
+  createNetworkPlugin,
+} from 'react-native-nitro-tracing/plugins'
+
+const client = createTraceClient({
+  runtimeMetrics: true,
+  plugins: [
+    createNavigationPlugin(navigationRef), // React Navigation ref or expo-router useNavigationContainerRef()
+    createNetworkPlugin(),
+    createErrorsPlugin(),
+  ],
+})
+
+<TraceInspector client={client} budgets={{ requestMs: 800 }} />
+```
+
+- **Navigation** records a `navigation.enter` mark and a `screen <name>` visit span per focused route, plus `navigation.transition`: the time from the state change to the second frame callback. This is a render-opportunity estimate, not content readiness.
+- **Network** is opt-in. It wraps `XMLHttpRequest.prototype`, which axios and React Native's polyfilled `fetch` use. It also wraps a native global `fetch` (Expo SDK 52+ installs `expo/fetch`; nitro-fetch is also native) unless that `fetch` is the XHR-based polyfill, so no request is counted twice. It records method, URL without query/fragment (with IDs templated to `:id`), status and duration. XHR spans end at `loadend`; native `fetch` spans end when response headers arrive, because the plugin never reads bodies or headers. The originals are restored on stop.
+- **Errors** chains `ErrorUtils.setGlobalHandler` and records `js.error` marks, and always calls the previous handler. Set `console: true` to also record `console.error` calls.
+- **Responsiveness** uses `runtimeMetrics` and `longtask` entries when React Native's global `PerformanceObserver` supports them.
+
+Default budgets: app ready 2000 ms, screen transition 1000 ms, request 1000 ms, JS stall 250 ms. These are local triage thresholds, not production percentiles.
+
+### Measurement layers: native, Sentry or both
+
+Performance signals use one shared metric vocabulary, so topics, issues, the live overlay and exports work the same whichever provider produces them. Every sample carries a `source` attribute.
+
+| Metric                                               | `createNativeMetricsPlugin()` (`source=native`)                  | `createSentryPlugin({ captureSpans: true })` (`source=sentry`) |
+| ---------------------------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------- |
+| `ui.fps`, `ui.frame_gap.max`                         | Main-thread CADisplayLink / Choreographer windows                | —                                                              |
+| `ui.frames.slow`, `ui.frames.frozen`                 | Gap > 1.5× display interval / ≥ 700 ms                           | Sentry nativeFrames span data (`ui.frames.total` too)          |
+| `process.cpu` (% of one core), `process.memory` (MB) | Sampler thread: `getrusage`, iOS physical footprint, Android RSS | —                                                              |
+| `app.start.cold`, `app.start.warm`                   | —                                                                | Sentry appStart spans                                          |
+
+The native plugin runs one C++ thread per recording (default window 1000 ms). Frame callbacks run on the main thread only while sampling is active, and there is no per-frame JS work. Display callbacks measure main-thread availability at each vsync; they do not measure GPU or compositor time. Background windows report no frame metrics.
+
+```ts
+createTraceClient({
+  plugins: [
+    createNativeMetricsPlugin({ intervalMs: 1000 }),
+    createSentryPlugin({ sentry: Sentry, captureSpans: true }),
+  ],
+})
+```
+
+### Exporting traces
+
+`recording.exportTraceEvents()` serializes the retained history as Chrome Trace Event JSON, off the JS thread. Open it at [ui.perfetto.dev](https://ui.perfetto.dev) or `chrome://tracing`:
+
+- Spans become lanes per source (`network`, `navigation`, `app`…), and concurrent spans get extra lanes so nesting stays valid.
+- Marks and flags become instant events.
+- Metrics become counter tracks (FPS, CPU, memory, stalls) aligned on the same clock.
+
+`client.shareTrace('perfetto')` shares a snapshot without stopping the recording. The overlay's **Share trace** button and the inspector's Share menu both use it. `client.export()` still stops the recording and shares the lossless recording JSON. Custom `share(recording, format)` adapters receive `'recording'` or `'perfetto'`. The overlay's **Flag** button records a `flag` mark, so testers can pin the moment they saw a problem before sharing.
+
+### Live overlay
+
+`<TraceOverlay client={client} />` from `/react` adds a draggable bubble showing JS frame-callback FPS; it turns red when the current screen has issues. Tap the bubble to open a **non-modal** sheet: the app stays usable above it, and the sheet streams the current screen visit (time on screen, requests, stalls, errors, and events newest first). Drag or tap to switch between the peek and half heights. Drag up, tap Inspector, or long-press the bubble to open the full inspector. Mount it last at the app root, next to `<TraceInspector />`. It appears below the app's own native modals. The app decides who sees it, for example internal or UAT builds only. It polls the recording once a second while the full inspector is closed.
 
 ### Core metrics
 

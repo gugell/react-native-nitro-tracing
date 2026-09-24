@@ -1,6 +1,6 @@
 {
   "name": "react-native-nitro-tracing",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "Bounded native performance recordings and explicit spans for React Native",
   "main": "lib/commonjs/index.cjs",
   "module": "lib/module/index.mjs",
@@ -77,7 +77,8 @@
     "@types/node": "^22.0.0",
     "expo-dev-client": "~56.0.27",
     "expo-file-system": "~56.0.11",
-    "expo-sharing": "~56.0.26"
+    "expo-sharing": "~56.0.26",
+    "react-native-safe-area-context": "~5.7.0"
   },
   "peerDependencies": {
     "react": "*",
@@ -87,7 +88,8 @@
     "@sentry/react-native": ">=7.11.0 <9",
     "expo-dev-client": ">=56",
     "expo-file-system": ">=56",
-    "expo-sharing": ">=56"
+    "expo-sharing": ">=56",
+    "react-native-safe-area-context": ">=5.7.0 <6"
   },
   "prettier": {
     "quoteProps": "consistent",
@@ -111,6 +113,9 @@
       "optional": true
     },
     "expo-sharing": {
+      "optional": true
+    },
+    "react-native-safe-area-context": {
       "optional": true
     }
   },

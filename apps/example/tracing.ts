@@ -15,6 +15,8 @@ export function useExampleTracing() {
   useEffect(() => {
     const next = createTraceClient({
       ...createExpoTraceSharing(),
+      runtimeMetrics: __DEV__,
+      autoProfile: __DEV__,
       profiler: createReleaseProfilerPlugin(profiler),
       onError: console.warn,
     })

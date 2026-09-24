@@ -184,3 +184,11 @@ Set `runtimeMetrics: true` on `createTraceClient` to collect foreground JS event
 Metrics show the whole recording rather than the selected trace. Explicit samples remain native/exportable events; `duration:` series and outcome statistics are derived from retained spans in the viewer. Duration series include successful/error outcomes; cancelled/interrupted spans are counted separately. Latest, median, min, max and nearest-rank p95 use retained samples (charts show the most recent 40). Retention eviction can bias statistics. Missing data is not reported as zero.
 
 Next collectors: native frame deadlines and frozen frames, process memory, CPU utilization, native app-start/first/full display boundaries, and per-screen readiness. These are not inferred from JS callback rates.
+
+### Inspector navigation (0.2)
+
+Overview summarizes the recording; Explore has separate Traces, Spans and Marks lists with search, outcome/source filters, duration/time bounds, exact correlation and sorting. Selecting a trace opens its full hierarchy; selecting a span exposes attributes and parent/child navigation. Metrics supports category/search/sort and focused charts. Profiles manages the separate Hermes artifact. Actions contains recording controls and Tools / Playground.
+
+Pause updates freezes the displayed snapshot, not collection. Interacting with lists/details queues new events until applied. Stop ends collection; Stop and export shares all retained events, regardless of filters. Starting over asks before replacing history.
+
+The `/react` entry point requires `react-native-safe-area-context` 5.7 or later within major version 5. Install the Expo-compatible version with `npx expo install react-native-safe-area-context`. The inspector owns a modal safe-area provider; the example uses a stable root provider with initial window metrics, a scrollable responsive launcher and Expo StatusBar. Development in the example enables runtime metrics and automatic Hermes profiling.

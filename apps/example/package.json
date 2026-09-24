@@ -14,12 +14,14 @@
     "expo-dev-client": "~56.0.27",
     "expo-file-system": "~56.0.11",
     "expo-sharing": "~56.0.26",
+    "expo-status-bar": "~56.0.4",
     "react": "catalog:",
     "react-native": "catalog:",
     "react-native-nitro-modules": "catalog:",
     "react-native-nitro-tracing": "workspace:*",
     "react-native-performance": "catalog:",
-    "react-native-release-profiler": "0.4.4"
+    "react-native-release-profiler": "0.4.4",
+    "react-native-safe-area-context": "~5.7.0"
   },
   "devDependencies": {
     "typescript": "catalog:",

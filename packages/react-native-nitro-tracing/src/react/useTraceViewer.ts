@@ -1,76 +1,121 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
-import type { TraceClient } from '../client/createTraceClient'
-import type { RecordingStats, TracePage } from '../types'
+import { readSnapshot } from './readSnapshot'
 import {
-  groupTraces,
-  recordingMetrics,
-  operationMetrics,
-  waterfall,
-} from './viewerModel'
-const empty: TracePage = {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react'
+import type { TraceClient } from '../client/createTraceClient'
+import type { RecordingStats, TracePage, SpanEvent, MarkEvent } from '../types'
+import {
+  buildTraces,
+  defaultQuery,
+  queryEvents,
+  queryTraces,
+  traceForSpan,
+  type ExplorerMode,
+  type Query,
+  type Trace,
+} from './explorerModel'
+import { recordingMetrics, operationMetrics } from './viewerModel'
+export type Metric = ReturnType<typeof recordingMetrics>[number]
+export type Detail =
+  | { kind: 'trace'; value: Trace }
+  | { kind: 'span'; value: SpanEvent }
+  | { kind: 'mark'; value: MarkEvent }
+  | { kind: 'metric'; value: Metric }
+export type Tab = 'overview' | 'explore' | 'metrics' | 'profiles' | 'playground'
+const empty = (): TracePage => ({
   spans: [],
   marks: [],
   metrics: [],
   nextSequence: 0,
   earliestSequence: 0,
   droppedEvents: 0,
-}
+})
 export const useTraceViewer = (client: TraceClient) => {
   const snapshot = useSyncExternalStore(
     client.subscribe,
     client.getSnapshot,
     client.getSnapshot
   )
-  const { visible } = snapshot
-  const [tab, setTab] = useState<
-    'overview' | 'traces' | 'metrics' | 'playground'
-  >('traces')
+  const [tab, setTab] = useState<Tab>('explore')
+  const [mode, setMode] = useState<ExplorerMode>('traces')
   const [page, setPage] = useState(empty)
   const [stats, setStats] = useState<RecordingStats>()
   const [error, setError] = useState<string>()
-  const [query, setQuery] = useState('')
-  const [selected, select] = useState<string>()
-  const [spanId, selectSpan] = useState<string>()
-
+  const [queries, setQueries] = useState<Record<ExplorerMode, Query>>({
+    traces: defaultQuery(),
+    spans: defaultQuery(),
+    marks: defaultQuery(),
+  })
+  const [details, setDetails] = useState<Detail[]>([])
+  const [paused, setPaused] = useState(false)
+  const [holding, setHolding] = useState(false)
+  const [pending, setPending] = useState<TracePage>()
+  const [metricQuery, setMetricQuery] = useState('')
+  const [metricCategory, setMetricCategory] = useState('all')
+  const [metricSort, setMetricSort] = useState('name')
+  const offsets = useRef<Record<string, number>>({})
+  const detailState = useRef<
+    Record<
+      string,
+      {
+        collapsed: string[]
+        layout: 'waterfall' | 'list'
+        attributes: string
+        offset: number
+      }
+    >
+  >({})
+  const latestPage = useRef(page)
+  const session = useRef<string | undefined>(undefined)
+  const controls = useRef({ paused, holding, detail: details.length > 0 })
+  controls.current = { paused, holding, detail: details.length > 0 }
+  latestPage.current = page
   useEffect(() => {
-    if (!visible) {
-      setPage(empty)
-      setStats(undefined)
-      return
-    }
+    if (!snapshot.visible) return
     let cancelled = false
     let timer: ReturnType<typeof setTimeout>
     const refresh = async () => {
       try {
         const recording = client.getRecording()
         if (recording) {
-          const snapshot: TracePage = {
-            ...empty,
-            spans: [],
-            marks: [],
-            metrics: [],
-          }
-          // Bound each refresh to native retention. Never accumulate a second JS history.
-          for (let i = 0; i < 3; i++) {
-            const batch = await recording.readEvents({
-              afterSequence: snapshot.nextSequence,
-              limit: 1000,
-            })
-            snapshot.spans.push(...batch.spans)
-            snapshot.marks.push(...batch.marks)
-            snapshot.metrics.push(...batch.metrics)
-            snapshot.nextSequence = batch.nextSequence
-            snapshot.earliestSequence = batch.earliestSequence
-            snapshot.droppedEvents = batch.droppedEvents
-            if (
-              batch.spans.length + batch.marks.length + batch.metrics.length <
-              1000
+          const next = await readSnapshot(recording)
+          if (cancelled || recording !== client.getRecording()) return
+          const current = recording.getStats()
+          setStats(current)
+          if (session.current !== current.sessionId) {
+            session.current = current.sessionId
+            setDetails([])
+            setPending(undefined)
+            setPage(next)
+            setHolding(false)
+            offsets.current = {}
+            detailState.current = {}
+            setQueries(
+              (previous) =>
+                Object.fromEntries(
+                  Object.entries(previous).map(([key, q]) => [
+                    key,
+                    { ...q, from: '', to: '' },
+                  ])
+                ) as Record<ExplorerMode, Query>
             )
-              break
-          }
-          if (!cancelled && recording === client.getRecording()) {
-            setPage(snapshot)
-            setStats(recording.getStats())
+          } else if (
+            controls.current.paused ||
+            controls.current.holding ||
+            controls.current.detail
+          ) {
+            if (
+              next.nextSequence !== latestPage.current.nextSequence ||
+              next.droppedEvents !== latestPage.current.droppedEvents
+            )
+              setPending(next)
+          } else {
+            setPage(next)
+            setPending(undefined)
           }
         }
         if (!cancelled) setError(client.getError())
@@ -85,75 +130,144 @@ export const useTraceViewer = (client: TraceClient) => {
       cancelled = true
       clearTimeout(timer)
     }
-  }, [visible, client])
-  const groups = useMemo(() => groupTraces(page, query), [page, query])
-  const totalTraces = useMemo(() => groupTraces(page, '').length, [page])
-  const selectedId = groups.some((group) => group.id === selected)
-    ? selected
-    : groups[0]?.id
-  const matches = (id: string) => (id || 'uncorrelated') === selectedId
-  const rows = waterfall(
-    page.spans.filter((span) => matches(span.correlationId))
-  )
-  const span = rows.find((row) => row.span.spanId === spanId)?.span
+  }, [client, snapshot.visible])
+  const traces = useMemo(() => buildTraces(page), [page])
   const metrics = useMemo(() => recordingMetrics(page), [page])
-  const marks = page.marks
-  const act = async (work: () => void | Promise<void>) => {
-    try {
-      await work()
-    } catch (failure) {
-      setError(String(failure))
-    }
+  const query = queries[mode]
+  const results = useMemo(
+    () =>
+      mode === 'traces'
+        ? queryTraces(traces, query)
+        : queryEvents(mode === 'spans' ? page.spans : page.marks, query),
+    [mode, traces, page, query]
+  )
+  const updateQuery = (patch: Partial<Query>) => {
+    setHolding(true)
+    setQueries((previous) => ({
+      ...previous,
+      [mode]: { ...previous[mode], ...patch },
+    }))
+    offsets.current[mode] = 0
+  }
+  const apply = () => {
+    if (pending) setPage(pending)
+    setPending(undefined)
+    setHolding(false)
+  }
+  const act = (work: () => void | Promise<void>) => {
+    void Promise.resolve()
+      .then(work)
+      .catch((failure) => {
+        setError(String(failure))
+        client.reportError(failure)
+      })
+  }
+  const detail = details[details.length - 1]
+  const open = (next: Detail) => {
+    setHolding(true)
+    setDetails((previous) => [...previous.slice(-31), next])
+  }
+  const showEvents = (mode: 'spans' | 'marks', patch: Partial<Query>) => {
+    setTab('explore')
+    setMode(mode)
+    setDetails([])
+    setQueries((previous) => ({
+      ...previous,
+      [mode]: { ...defaultQuery(), ...patch },
+    }))
+    offsets.current[mode] = 0
+    setHolding(true)
   }
   return {
     ...snapshot,
-    playgroundResult: snapshot.playground,
+    client,
     tab,
-    setTab,
-    summary: {
-      traces: totalTraces,
-      spans: page.spans.length,
-      marks: page.marks.length,
-      metrics: page.metrics.length,
+    setTab: (next: Tab) => {
+      setDetails([])
+      setTab(next)
     },
-    openPlaygroundTrace: () => {
-      if (snapshot.playground) {
-        setQuery(snapshot.playground.correlationId)
-        select(snapshot.playground.correlationId)
-        setTab('traces')
-      }
-    },
-    canShare: client.canShare,
-    canProfile: client.canProfile,
-    canShareProfile: client.canShareProfile,
-    toggleProfile: () => void act(client.toggleProfile),
-    shareProfile: () => void act(client.shareProfile),
-    visible,
-    close: client.close,
+    mode,
+    setMode,
+    page,
     stats,
     error,
+    traces,
+    results,
     query,
-    setQuery,
-    groups: groups.slice(0, 100),
-    truncated:
-      groups.length > 100 ||
-      rows.length > 100 ||
-      marks.length > 100 ||
-      metrics.length > 40 ||
-      (stats?.eventCount ?? 0) > 3000,
-    selectedId,
-    select,
-    rows: rows.slice(0, 100),
-    span,
-    selectSpan,
-    metrics: metrics.slice(0, 40),
-    operations: operationMetrics(page.spans).slice(0, 40),
-    marks: marks.slice(0, 100),
-    busy: snapshot.busy,
-    start: () => void act(client.start),
-    stop: () => void act(client.stop),
-    clear: () => void act(client.clear),
-    export: () => void act(client.export),
-    playground: () => void act(client.playground),
+    updateQuery,
+    resetQuery: () => {
+      setQueries((previous) => ({ ...previous, [mode]: defaultQuery() }))
+      offsets.current[mode] = 0
+    },
+    loaded:
+      mode === 'traces'
+        ? traces.length
+        : mode === 'spans'
+          ? page.spans.length
+          : page.marks.length,
+    uncorrelated:
+      page.spans.filter((s) => !s.correlationId).length +
+      page.marks.filter((s) => !s.correlationId).length,
+    detail,
+    detailState,
+    details,
+    open,
+    back: () => setDetails((previous) => previous.slice(0, -1)),
+    traceFor: (span: SpanEvent) => traceForSpan(traces, span),
+    showSpans: (patch: Partial<Query>) => showEvents('spans', patch),
+    showMarks: (patch: Partial<Query>) => showEvents('marks', patch),
+    evicted: (() => {
+      const retained = pending ?? page
+      if (!detail) return false
+      const sequences = new Set(
+        [...retained.spans, ...retained.marks, ...retained.metrics].map(
+          (event) => event.sequence
+        )
+      )
+      const inspected =
+        detail.kind === 'trace'
+          ? [...detail.value.spans, ...detail.value.marks]
+          : detail.kind === 'metric'
+            ? detail.value.samples
+            : [detail.value]
+      return inspected.some((event) => !sequences.has(event.sequence))
+    })(),
+    paused,
+    holding,
+    setHolding,
+    pending,
+    apply,
+    togglePause: () => {
+      if (paused) apply()
+      setPaused(!paused)
+    },
+    offsets,
+    metrics,
+    operations: operationMetrics(page.spans),
+    metricQuery,
+    setMetricQuery,
+    metricCategory,
+    setMetricCategory,
+    metricSort,
+    setMetricSort,
+    start: () => act(client.start),
+    stop: () => act(client.stop),
+    export: () => act(client.export),
+    toggleProfile: () => act(client.toggleProfile),
+    shareProfile: () => act(client.shareProfile),
+    playground: () => act(client.playground),
+    playgroundResult: snapshot.playground,
+    openPlayground: () => {
+      setTab('explore')
+      setMode('traces')
+      setQueries((previous) => ({
+        ...previous,
+        traces: {
+          ...defaultQuery(),
+          correlation: snapshot.playground?.correlationId ?? '',
+        },
+      }))
+    },
   }
 }
+export type Viewer = ReturnType<typeof useTraceViewer>

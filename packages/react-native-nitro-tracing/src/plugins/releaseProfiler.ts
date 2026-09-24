@@ -75,6 +75,19 @@ export function createReleaseProfilerPlugin(
         try {
           path = await api.stopProfiling(false)
           span?.end('success')
+          // Lets a Perfetto export point at the .cpuprofile covering the span above.
+          try {
+            context?.recording.mark({
+              name: 'hermes.profile.saved',
+              correlationId: '',
+              attributes: [
+                { key: 'source', value: 'release-profiler' },
+                { key: 'path', value: path.slice(0, 512) },
+              ],
+            })
+          } catch (error) {
+            context?.reportError(error)
+          }
           return path
         } catch (error) {
           span?.end('error')

@@ -147,7 +147,7 @@ function Overlay({
       visit={visit}
       vitals={vitals}
       recording={snapshot.recording}
-      flag={() => client.trace.mark('flag', { source: 'flag' })}
+      flag={() => client.flag()}
       share={client.canShare ? () => client.shareTrace('perfetto') : undefined}
       t={t}
     />

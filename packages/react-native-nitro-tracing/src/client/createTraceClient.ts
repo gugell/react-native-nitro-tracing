@@ -36,6 +36,11 @@ export interface TraceClientOptions {
   shareProfile?: (path: string) => Promise<void>
   /** Start Hermes sampling with each recording; stopped and saved with it. */
   autoProfile?: boolean
+  /**
+   * CPU profile window captured by `flag()` when a profiler is attached and idle.
+   * Default 10000 ms; 0 records only the flag mark.
+   */
+  flagProfileMs?: number
   profiler?: ReleaseProfilerPlugin
 }
 export interface TraceClientSnapshot {
@@ -371,6 +376,26 @@ export function createTraceClient(options: TraceClientOptions = {}) {
       enqueue(async () => {
         if (recording && options.share) await options.share(recording, format)
       }),
+    /**
+     * Mark the moment a tester saw a problem. With an idle profiler this also captures
+     * a bounded Hermes profile, so the flag ships with what the JS thread was doing.
+     */
+    flag: (note?: string) => {
+      trace.mark('flag', { source: 'flag', note })
+      const profiler = options.profiler
+      const windowMs = options.flagProfileMs ?? 10000
+      if (!profiler || windowMs <= 0) return
+      // enqueue already reports failures; the catches only avoid unhandled rejections.
+      enqueue(async () => {
+        if (!enabled || profiler.isProfiling()) return
+        profiler.startProfiling()
+        setTimeout(() => {
+          enqueue(async () => {
+            if (profiler.isProfiling()) await profiler.stopProfiling()
+          }).catch(() => {})
+        }, windowMs)
+      }).catch(() => {})
+    },
     toggleProfile: () =>
       enqueue(async () => {
         if (!enabled || !options.profiler) return

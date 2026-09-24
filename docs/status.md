@@ -21,7 +21,7 @@ Verified on an iPhone 13 Pro Max and a Pixel 7a (dev builds), through a producti
 
 ## Known issues
 
-- The Hermes sampling profiler is process-wide. If a dev reload tears down the JS runtime while it is sampling, the app aborts. Keep `autoProfile` off in dev and profile on demand.
+- React Native 0.85's Android `HermesSamplingProfiler.disable()` re-enables sampling. The package stops Hermes directly after each profile and before reloads; other code calling that Java API is still affected.
 - Android uses the package's own tab bar, because the Material tab bar needs a MaterialComponents app theme.
 
 ## Checklist
@@ -31,7 +31,7 @@ Verified on an iPhone 13 Pro Max and a Pixel 7a (dev builds), through a producti
 - [ ] Run a release/UAT build on both platforms, covering: ProGuard, the overlay's show/hide flag, and sampler overhead with Hermes release settings.
 - [x] Raise the default `maxEvents` for multi-hour sessions (10000 events, 6 MB; metrics use at most half).
 - [x] Flag an issue with a bounded CPU profile, linked from the Perfetto export (`client.flag()`, `flagProfileMs`).
-- [ ] Guard the profiler against runtime teardown, or document that it must stay off during reloads.
+- [x] Guard the profiler against runtime teardown: stops really stop Hermes sampling (RN 0.85 Android binds `disable()` to `enable`), and a ReactHost before-destroy guard stops it before reloads.
 - [x] Release tooling: release-it, conventional changelog, pack check, trusted-publishing workflow (see [releasing](releasing.md)).
 - [ ] First npm publication (0.6.0), then configure the trusted publisher. Hosts use a vendored tarball until then.
 

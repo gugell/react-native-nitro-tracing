@@ -321,3 +321,29 @@ it('recovers profiler ownership after a synchronous native stop failure', async 
   expect(plugin.isProfiling()).toBe(false)
   await handle.stop()
 })
+
+it('stops the Hermes sampler after every profile stop, including failures', async () => {
+  const stopSampler = jest.fn()
+  const api = {
+    startProfiling: jest.fn(),
+    stopProfiling: jest
+      .fn()
+      .mockResolvedValueOnce('/cache/one.cpuprofile')
+      .mockRejectedValueOnce(new Error('native stop')),
+  }
+  const plugin = createReleaseProfilerPlugin(api, { stopSampler })
+  const handle = plugin.start({
+    recording: {
+      startSpan: () => ({ end: jest.fn() }),
+      mark: jest.fn(),
+    },
+    reportError: jest.fn(),
+  } as never)
+  plugin.startProfiling()
+  await plugin.stopProfiling()
+  expect(stopSampler).toHaveBeenCalledTimes(1)
+  plugin.startProfiling()
+  await expect(plugin.stopProfiling()).rejects.toThrow('native stop')
+  expect(stopSampler).toHaveBeenCalledTimes(2)
+  await handle.stop()
+})

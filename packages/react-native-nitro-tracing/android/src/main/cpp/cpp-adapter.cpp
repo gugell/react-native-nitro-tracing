@@ -1,7 +1,8 @@
-#include <jni.h>
-#include <fbjni/fbjni.h>
+#include "HermesSampling.hpp"
 #include "NitroTracingOnLoad.hpp"
 #include "core/NativeSampler.hpp"
+#include <fbjni/fbjni.h>
+#include <jni.h>
 
 using margelo::nitro::tracingcore::FrameMonitor;
 
@@ -32,6 +33,10 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_margelo_nitro_nitrotracing_NitroTracingFrameSource_nativeOnFrame(JNIEnv *, jclass, jlong frameTimeNanos) {
   // Choreographer frame times share the monotonic clock; 0 lets the monitor infer the interval.
   FrameMonitor::instance().onFrame(static_cast<double>(frameTimeNanos) / 1e9, 0);
+}
+
+extern "C" JNIEXPORT jboolean JNICALL Java_com_margelo_nitro_nitrotracing_HermesSampling_disable(JNIEnv *, jclass) {
+  return margelo::nitro::nitrotracing::disableHermesSampling() ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *) {

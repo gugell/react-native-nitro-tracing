@@ -15,6 +15,7 @@ namespace margelo::nitro::nitrotracing {
     // load custom methods/properties
     registerHybrids(this, [](Prototype& prototype) {
       prototype.registerHybridMethod("startRecording", &HybridTracingSpec::startRecording);
+      prototype.registerHybridMethod("disableHermesSampling", &HybridTracingSpec::disableHermesSampling);
     });
   }
 

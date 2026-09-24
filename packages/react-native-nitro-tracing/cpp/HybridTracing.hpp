@@ -5,5 +5,6 @@ class HybridTracing final : public HybridTracingSpec {
 public:
   HybridTracing() : HybridObject(TAG) {}
   std::shared_ptr<HybridRecordingSpec> startRecording(const RecordingOptions &options) override;
+  bool disableHermesSampling() override;
 };
 } // namespace margelo::nitro::nitrotracing

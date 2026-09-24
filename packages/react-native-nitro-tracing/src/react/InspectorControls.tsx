@@ -10,6 +10,13 @@ export const palette = {
   error: '#ff8d98',
 }
 export const ui = StyleSheet.create({
+  bottomNav: {
+    borderTopWidth: 1,
+    borderColor: palette.line,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
   root: { flex: 1, backgroundColor: palette.bg },
   header: {
     padding: 14,

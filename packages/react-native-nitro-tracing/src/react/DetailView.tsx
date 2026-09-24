@@ -1,5 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react'
-import { FlatList, Pressable, ScrollView, Text, View } from 'react-native'
+import { useSelector } from '@legendapp/state/react'
+import { LegendList } from '@legendapp/list/react-native'
+import React, { useState, useRef, useEffect, useMemo } from 'react'
+import { Pressable, ScrollView, Text, View } from 'react-native'
 import type { Viewer, Metric } from './useTraceViewer'
 import type { InspectorTranslator } from './labels'
 import { hierarchyRows, sourceOf, matchesSearch } from './explorerModel'
@@ -95,24 +97,35 @@ export function DetailView({ v, t }: { v: Viewer; t: InspectorTranslator }) {
         v.detailState.current[key].offset = offset.current
     },
   }
+  const items = useMemo(
+    () =>
+      detail.kind === 'trace'
+        ? [
+            ...hierarchyRows(detail.value.spans, collapsed).map((row) => ({
+              kind: 'span' as const,
+              row,
+            })),
+            ...detail.value.marks.map((mark) => ({
+              kind: 'mark' as const,
+              mark,
+            })),
+          ]
+        : [],
+    [detail, collapsed]
+  )
   if (detail.kind === 'trace') {
     const trace = detail.value
-    const rows = hierarchyRows(trace.spans, collapsed)
-    const items = [
-      ...rows.map((row) => ({ kind: 'span' as const, row })),
-      ...trace.marks.map((mark) => ({ kind: 'mark' as const, mark })),
-    ]
     return (
-      <FlatList
+      <LegendList
+        recycleItems
         {...scrollProps}
+        initialScrollOffset={offset.current}
         data={items}
         keyExtractor={(item) =>
           item.kind === 'span'
             ? item.row.span.spanId
             : `mark:${item.mark.sequence}`
         }
-        initialNumToRender={20}
-        windowSize={7}
         ListHeaderComponent={
           <View style={ui.content}>
             <Text style={ui.title}>{trace.name}</Text>
@@ -127,7 +140,7 @@ export function DetailView({ v, t }: { v: Viewer; t: InspectorTranslator }) {
               {trace.id} · {trace.start.toFixed(1)}–
               {(trace.start + trace.duration).toFixed(1)} ms
             </Text>
-            {v.evicted && <Text style={ui.error}>{t('evicted')}</Text>}
+            <EvictionNotice v={v} t={t} />
             {v.pending && <Text style={ui.muted}>{t('detailFrozen')}</Text>}
             <View style={ui.row}>
               <Button
@@ -235,7 +248,7 @@ export function DetailView({ v, t }: { v: Viewer; t: InspectorTranslator }) {
   if (detail.kind === 'metric')
     return (
       <ScrollView {...scrollProps} contentContainerStyle={ui.content}>
-        {v.evicted && <Text style={ui.error}>{t('evicted')}</Text>}
+        <EvictionNotice v={v} t={t} />
         <MetricDetail series={detail.value} t={t} />
       </ScrollView>
     )
@@ -254,7 +267,7 @@ export function DetailView({ v, t }: { v: Viewer; t: InspectorTranslator }) {
       contentContainerStyle={ui.content}
       keyboardShouldPersistTaps="handled"
     >
-      {v.evicted && <Text style={ui.error}>{t('evicted')}</Text>}
+      <EvictionNotice v={v} t={t} />
       <Text style={ui.title}>{event.name}</Text>
       <View style={ui.card}>
         <Text style={ui.text}>
@@ -284,7 +297,11 @@ export function DetailView({ v, t }: { v: Viewer; t: InspectorTranslator }) {
         )}
         <Button
           label={t('similar')}
-          onPress={() => (detail.kind === 'mark' ? v.showMarks : v.showSpans)({ search: event.name })}
+          onPress={() =>
+            (detail.kind === 'mark' ? v.showMarks : v.showSpans)({
+              search: event.name,
+            })
+          }
         />
         {parent && (
           <Button
@@ -323,4 +340,21 @@ export function DetailView({ v, t }: { v: Viewer; t: InspectorTranslator }) {
       ))}
     </ScrollView>
   )
+}
+
+function EvictionNotice({ v, t }: { v: Viewer; t: InspectorTranslator }) {
+  const earliest =
+    useSelector(() => v.telemetry.pending.earliestSequence.get()) ??
+    v.page.earliestSequence
+  const detail = v.detail
+  if (!detail) return null
+  const events =
+    detail.kind === 'trace'
+      ? [...detail.value.spans, ...detail.value.marks]
+      : detail.kind === 'metric'
+        ? detail.value.samples
+        : [detail.value]
+  return events.some((event) => event.sequence < earliest) ? (
+    <Text style={ui.error}>{t('evicted')}</Text>
+  ) : null
 }

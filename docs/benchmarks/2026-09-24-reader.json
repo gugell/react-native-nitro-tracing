@@ -1,0 +1,17 @@
+{
+  "scenario": "Node host workload, 4500 retained marks, 30 polls, 4 added metrics per poll, 10 repetitions; excludes native scheduling and React rendering",
+  "results": {
+    "before": {
+      "convertedEvents": 136860,
+      "medianHostMs": 11.13708299999999,
+      "minHostMs": 10.039209,
+      "maxHostMs": 13.028708999999992
+    },
+    "after": {
+      "convertedEvents": 120,
+      "medianHostMs": 1.108000000000004,
+      "minHostMs": 0.8800420000000031,
+      "maxHostMs": 1.5255830000000117
+    }
+  }
+}

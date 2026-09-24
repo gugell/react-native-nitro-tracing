@@ -1,4 +1,5 @@
 export const defaultLabels = {
+  applyFilters: 'Apply filters',
   title: 'Performance',
   searchMatch: 'Search match',
   explore: 'Explore',

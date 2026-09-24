@@ -1,6 +1,6 @@
 {
   "name": "react-native-nitro-tracing",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Bounded native performance recordings and explicit spans for React Native",
   "main": "lib/commonjs/index.cjs",
   "module": "lib/module/index.mjs",
@@ -60,35 +60,37 @@
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
-    "nitrogen": "catalog:",
-    "react-native-nitro-modules": "catalog:",
-    "react-native": "catalog:",
-    "react": "catalog:",
-    "typescript": "catalog:",
-    "@types/react": "~19.2.14",
-    "react-native-performance": "catalog:",
-    "@sentry/react-native": "catalog:",
-    "jest": "catalog:",
-    "babel-jest": "catalog:",
-    "@types/jest": "catalog:",
-    "@babel/preset-typescript": "^7.25.0",
     "@babel/preset-env": "catalog:",
-    "esbuild": "0.28.2",
+    "@babel/preset-typescript": "^7.25.0",
+    "@sentry/react-native": "catalog:",
+    "@types/jest": "catalog:",
     "@types/node": "^22.0.0",
+    "@types/react": "~19.2.14",
+    "@types/react-test-renderer": "19",
+    "babel-jest": "catalog:",
+    "esbuild": "0.28.2",
     "expo-dev-client": "~56.0.27",
     "expo-file-system": "~56.0.11",
     "expo-sharing": "~56.0.26",
-    "react-native-safe-area-context": "~5.7.0"
+    "jest": "catalog:",
+    "nitrogen": "catalog:",
+    "react": "catalog:",
+    "react-native": "catalog:",
+    "react-native-nitro-modules": "catalog:",
+    "react-native-performance": "catalog:",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-test-renderer": "19.2.3",
+    "typescript": "catalog:"
   },
   "peerDependencies": {
-    "react": "*",
-    "react-native": "*",
-    "react-native-nitro-modules": "^0.37.1",
-    "react-native-performance": ">=6",
     "@sentry/react-native": ">=7.11.0 <9",
     "expo-dev-client": ">=56",
     "expo-file-system": ">=56",
     "expo-sharing": ">=56",
+    "react": "*",
+    "react-native": "*",
+    "react-native-nitro-modules": "^0.37.1",
+    "react-native-performance": ">=6",
     "react-native-safe-area-context": ">=5.7.0 <6"
   },
   "prettier": {
@@ -177,5 +179,9 @@
       "default": "./lib/module/release-profiler.mjs"
     },
     "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@legendapp/list": "3.4.0",
+    "@legendapp/state": "2.1.15"
   }
 }

@@ -1,13 +1,7 @@
+import { LegendList } from '@legendapp/list/react-native'
 import React, { useState } from 'react'
-import {
-  FlatList,
-  Modal,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native'
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
+import { Pressable, Text, View } from 'react-native'
+import { ExplorerFilters } from './ExplorerFilters'
 import type { InspectorTranslator } from './labels'
 import type { Viewer } from './useTraceViewer'
 import { sourceOf, type Event, type Trace, type Sort } from './explorerModel'
@@ -19,15 +13,6 @@ const toggle = (values: string[], value: string) =>
 const isTrace = (item: Trace | Event): item is Trace => 'spans' in item
 export function ExplorerView({ v, t }: { v: Viewer; t: InspectorTranslator }) {
   const [filters, setFilters] = useState(false)
-  const sources = [
-    ...new Set([...v.page.spans, ...v.page.marks].map(sourceOf)),
-  ].sort()
-  const sorts: Sort[] =
-    v.mode === 'traces'
-      ? ['newest', 'oldest', 'longest', 'errors', 'count', 'name']
-      : v.mode === 'spans'
-        ? ['newest', 'oldest', 'longest', 'shortest', 'name']
-        : ['newest', 'oldest', 'name']
   const invalid =
     [v.query.from, v.query.to, v.query.minDuration].some(
       (value) =>
@@ -108,7 +93,8 @@ export function ExplorerView({ v, t }: { v: Viewer; t: InspectorTranslator }) {
           </Text>
         )}
       </View>
-      <FlatList
+      <LegendList
+        recycleItems
         key={v.mode}
         data={invalid ? [] : (v.results as (Trace | Event)[])}
         keyExtractor={(item) =>
@@ -119,15 +105,12 @@ export function ExplorerView({ v, t }: { v: Viewer; t: InspectorTranslator }) {
               : String(item.sequence)
         }
         keyboardShouldPersistTaps="handled"
-        contentOffset={{ x: 0, y: v.offsets.current[v.mode] ?? 0 }}
+        initialScrollOffset={v.offsets.current[v.mode] ?? 0}
         onScroll={(event) => {
           v.offsets.current[v.mode] = event.nativeEvent.contentOffset.y
         }}
         scrollEventThrottle={100}
         onScrollBeginDrag={() => v.setHolding(true)}
-        initialNumToRender={15}
-        maxToRenderPerBatch={15}
-        windowSize={7}
         ListEmptyComponent={
           <View style={ui.content}>
             <Text style={ui.muted}>{t('noResults')}</Text>
@@ -177,108 +160,9 @@ export function ExplorerView({ v, t }: { v: Viewer; t: InspectorTranslator }) {
           </Pressable>
         )}
       />
-      <Modal
-        visible={filters}
-        animationType="slide"
-        onRequestClose={() => setFilters(false)}
-      >
-        <SafeAreaProvider>
-          <SafeAreaView style={ui.root}>
-            <View style={ui.header}>
-              <View style={ui.spread}>
-                <Text style={ui.title}>{t('filters')}</Text>
-                <Button
-                  label={t('done')}
-                  onPress={() => setFilters(false)}
-                  disabled={invalid}
-                />
-              </View>
-            </View>
-            <ScrollView
-              contentContainerStyle={ui.content}
-              keyboardShouldPersistTaps="handled"
-            >
-              <Text style={ui.heading}>{t('sort')}</Text>
-              <View style={ui.row}>
-                {sorts.map((sort) => (
-                  <Button
-                    key={sort}
-                    label={t(sort)}
-                    selected={sort === v.query.sort}
-                    onPress={() => v.updateQuery({ sort })}
-                  />
-                ))}
-              </View>
-              {v.mode !== 'marks' && (
-                <>
-                  <Text style={ui.heading}>{t('outcome')}</Text>
-                  <View style={ui.row}>
-                    {(v.mode === 'traces'
-                      ? ['error', 'success']
-                      : ['success', 'error', 'cancelled', 'interrupted']
-                    ).map((outcome) => (
-                      <Button
-                        key={outcome}
-                        label={t(
-                          outcome === 'success' && v.mode === 'traces'
-                            ? 'noErrors'
-                            : (outcome as 'success')
-                        )}
-                        selected={v.query.outcomes.includes(outcome)}
-                        onPress={() =>
-                          v.updateQuery({
-                            outcomes: toggle(v.query.outcomes, outcome),
-                          })
-                        }
-                      />
-                    ))}
-                  </View>
-                  <Field
-                    label={t('minDuration')}
-                    numeric
-                    value={v.query.minDuration}
-                    onChange={(minDuration) => v.updateQuery({ minDuration })}
-                  />
-                </>
-              )}
-              <Text style={ui.heading}>{t('source')}</Text>
-              <View style={ui.row}>
-                {sources.map((source) => (
-                  <Button
-                    key={source}
-                    label={source}
-                    selected={v.query.sources.includes(source)}
-                    onPress={() =>
-                      v.updateQuery({
-                        sources: toggle(v.query.sources, source),
-                      })
-                    }
-                  />
-                ))}
-              </View>
-              <Field
-                label={t('from')}
-                numeric
-                value={v.query.from}
-                onChange={(from) => v.updateQuery({ from })}
-              />
-              <Field
-                label={t('to')}
-                numeric
-                value={v.query.to}
-                onChange={(to) => v.updateQuery({ to })}
-              />
-              <Field
-                label={t('correlation')}
-                value={v.query.correlation}
-                onChange={(correlation) => v.updateQuery({ correlation })}
-              />
-              {invalid && <Text style={ui.error}>{t('invalidRange')}</Text>}
-              <Button label={t('reset')} onPress={v.resetQuery} />
-            </ScrollView>
-          </SafeAreaView>
-        </SafeAreaProvider>
-      </Modal>
+      {filters && (
+        <ExplorerFilters v={v} t={t} close={() => setFilters(false)} />
+      )}
     </View>
   )
 }

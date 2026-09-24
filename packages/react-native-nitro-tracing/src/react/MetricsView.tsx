@@ -1,70 +1,97 @@
-import React from 'react'
-import { FlatList, Pressable, Text, View } from 'react-native'
+import { LegendList } from '@legendapp/list/react-native'
+import React, { useState, useMemo } from 'react'
+import { InspectorSheet } from './InspectorSheet'
+import { Pressable, Text, View } from 'react-native'
 import type { Viewer } from './useTraceViewer'
 import type { InspectorTranslator } from './labels'
 import { Button, Field, ui } from './InspectorControls'
 export function MetricsView({ v, t }: { v: Viewer; t: InspectorTranslator }) {
+  const [filters, setFilters] = useState(false)
   const category = (name: string) =>
     name.startsWith('duration: ')
       ? 'operations'
       : name.startsWith('js.') || name.startsWith('app.ready.')
         ? 'runtime'
         : 'custom'
-  const metrics = v.metrics
-    .filter(
-      (series) =>
-        (v.metricCategory === 'all' ||
-          category(series.name) === v.metricCategory) &&
-        series.name.toLowerCase().includes(v.metricQuery.toLowerCase())
-    )
-    .sort((a, b) =>
-      v.metricSort === 'name'
-        ? a.name.localeCompare(b.name)
-        : v.metricSort === 'count'
-          ? b.retainedCount - a.retainedCount || a.name.localeCompare(b.name)
-          : b.p95 - a.p95 || a.name.localeCompare(b.name)
-    )
+  const metrics = useMemo(
+    () =>
+      v.metrics
+        .filter(
+          (series) =>
+            (v.metricCategory === 'all' ||
+              category(series.name) === v.metricCategory) &&
+            series.name.toLowerCase().includes(v.metricQuery.toLowerCase())
+        )
+        .sort((a, b) =>
+          v.metricSort === 'name'
+            ? a.name.localeCompare(b.name)
+            : v.metricSort === 'count'
+              ? b.retainedCount - a.retainedCount ||
+                a.name.localeCompare(b.name)
+              : b.p95 - a.p95 || a.name.localeCompare(b.name)
+        ),
+    [v.metrics, v.metricCategory, v.metricQuery, v.metricSort]
+  )
   return (
     <View style={{ flex: 1 }}>
       <View style={ui.header}>
-        <View style={ui.row}>
-          {(['all', 'runtime', 'operations', 'custom'] as const).map(
-            (category) => (
-              <Button
-                key={category}
-                label={t(category)}
-                selected={v.metricCategory === category}
-                onPress={() => v.setMetricCategory(category)}
-              />
-            )
-          )}
-        </View>
         <Field
           label={t('metricSearch')}
           value={v.metricQuery}
           onChange={v.setMetricQuery}
         />
-        <View style={ui.row}>
-          {(['name', 'count', 'p95'] as const).map((sort) => (
-            <Button
-              key={sort}
-              label={t(sort)}
-              selected={v.metricSort === sort}
-              onPress={() => v.setMetricSort(sort)}
-            />
-          ))}
-        </View>
-        <Text style={ui.muted}>{t('metricSortNotice')}</Text>
+        <Button
+          label={t('filters')}
+          onPress={() => {
+            v.setHolding(true)
+            setFilters(true)
+          }}
+        />
       </View>
-      <FlatList
+      {filters && (
+        <InspectorSheet
+          visible
+          title={t('filters')}
+          close={() => setFilters(false)}
+          closeLabel={t('done')}
+        >
+          <View style={ui.content}>
+            <View style={ui.row}>
+              {(['all', 'runtime', 'operations', 'custom'] as const).map(
+                (category) => (
+                  <Button
+                    key={category}
+                    label={t(category)}
+                    selected={v.metricCategory === category}
+                    onPress={() => v.setMetricCategory(category)}
+                  />
+                )
+              )}
+            </View>
+            <View style={ui.row}>
+              {(['name', 'count', 'p95'] as const).map((sort) => (
+                <Button
+                  key={sort}
+                  label={t(sort)}
+                  selected={v.metricSort === sort}
+                  onPress={() => v.setMetricSort(sort)}
+                />
+              ))}
+            </View>
+            <Text style={ui.muted}>{t('metricSortNotice')}</Text>
+          </View>
+        </InspectorSheet>
+      )}
+      <LegendList
+        recycleItems
         data={metrics}
-        contentOffset={{ x: 0, y: v.offsets.current.metrics ?? 0 }}
-        onScroll={(event) => { v.offsets.current.metrics = event.nativeEvent.contentOffset.y }}
+        initialScrollOffset={v.offsets.current.metrics ?? 0}
+        onScroll={(event) => {
+          v.offsets.current.metrics = event.nativeEvent.contentOffset.y
+        }}
         scrollEventThrottle={100}
         onScrollBeginDrag={() => v.setHolding(true)}
         keyExtractor={(series) => series.name}
-        initialNumToRender={15}
-        windowSize={7}
         ListEmptyComponent={
           <View style={ui.content}>
             <Text style={ui.muted}>{t('emptyMetrics')}</Text>

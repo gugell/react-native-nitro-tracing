@@ -34,3 +34,11 @@ On iPhone 17 Pro / iOS 26.5:
 ## Explorer 0.2.0 (2026-09-24)
 
 Build, package/example TypeScript and all 50 tests passed. Coverage includes filter combinations, correlation grouping, stable sorting, hierarchy cycles/collapse and snapshots above 3,000 retained events. Read-only reviews prompted fixes for mark Similar navigation, metric/detail scroll restoration, queued updates, timeline alignment and eviction notices. The independent example uses safe-area-context 5.7 with a stable root provider and Expo status bar handling. App integration passed all 236 tests and TypeScript; lint has zero errors. Pixel dev-client loading and new screen presence were confirmed; full interaction checks remain pending due concurrent device navigation. The standalone sample was typechecked but not rebuilt on device.
+
+## Inspector overhead correction (0.2.1)
+
+The previous inspector reread all retained native events every second and rerendered its root for stats/pending changes. Cursor reads now preserve unchanged arrays; small Legend State telemetry subscriptions isolate those updates from held content. A React hook regression test verifies no content rerender on a held-view poll, explicit pending application and timer cleanup. Four reader regression cases cover incremental pages, unchanged snapshots and retention eviction. All 55 tests, build and package/example typechecks pass.
+
+The controlled host workload in `benchmarks/2026-09-24-reader.json` compares the previous reader from bc84f1c with the cursor reader: 4,500 retained events, 30 polls adding four events each, ten repetitions. Event objects converted: 136,860 before, 120 after. Node host median loop time: 11.14 ms before, 1.11 ms after. This synthetic reader test excludes native scheduling, React rendering and device frame timing; it cannot establish release UI latency or frame rate.
+
+UI reference inspected: https://github.com/getsentry/sentry-react-native/blob/main/samples/react-native/src/App.tsx uses bottom-tab and native-stack navigation. This inspector follows the separation of destinations, detail screens and modal controls without adding a navigation-container dependency to the host app.

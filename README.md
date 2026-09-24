@@ -192,3 +192,9 @@ Overview summarizes the recording; Explore has separate Traces, Spans and Marks 
 Pause updates freezes the displayed snapshot, not collection. Interacting with lists/details queues new events until applied. Stop ends collection; Stop and export shares all retained events, regardless of filters. Starting over asks before replacing history.
 
 The `/react` entry point requires `react-native-safe-area-context` 5.7 or later within major version 5. Install the Expo-compatible version with `npx expo install react-native-safe-area-context`. The inspector owns a modal safe-area provider; the example uses a stable root provider with initial window metrics, a scrollable responsive launcher and Expo StatusBar. Development in the example enables runtime metrics and automatic Hermes profiling.
+
+### Inspector overhead (0.2.1)
+
+Explorer, metric and trace-detail lists use LegendList 3.4.0. Legend State 2.1.15 owns live counters and queued-update metadata; only status/eviction indicators subscribe to those values. Navigation and draft controls remain local React state. Native snapshots use sequence cursors to transfer only newly retained events and trim evicted history. Unchanged event arrays retain identity, and metrics/outcome aggregation is limited to screens that display it. Search uses deferred queries; it still executes on the JS thread.
+
+Bottom navigation switches destinations, details show one selection, and Actions / Filters open separate sheets. Trace filters are drafts: Apply commits them, Cancel discards them. Pause updates holds the content snapshot while recording continues. This reduces observer work; continuous Hermes sampling and development logging still have their own overhead.

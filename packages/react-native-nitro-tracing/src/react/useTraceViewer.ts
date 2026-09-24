@@ -1,6 +1,8 @@
+import { useObservable } from '@legendapp/state/react'
 import { readSnapshot } from './readSnapshot'
 import {
   useEffect,
+  useDeferredValue,
   useMemo,
   useRef,
   useState,
@@ -43,8 +45,25 @@ export const useTraceViewer = (client: TraceClient) => {
   const [tab, setTab] = useState<Tab>('explore')
   const [mode, setMode] = useState<ExplorerMode>('traces')
   const [page, setPage] = useState(empty)
-  const [stats, setStats] = useState<RecordingStats>()
-  const [error, setError] = useState<string>()
+  const telemetry = useObservable<{
+    stats?: RecordingStats
+    error?: string
+    pending?: Pick<TracePage, 'nextSequence' | 'earliestSequence'>
+  }>({})
+  const setStats = (value: RecordingStats) => telemetry.stats.set(value)
+  const setError = (value: string | undefined) => telemetry.error.set(value)
+  const pendingPage = useRef<TracePage | undefined>(undefined)
+  const setPending = (value: TracePage | undefined) => {
+    pendingPage.current = value
+    telemetry.pending.set(
+      value
+        ? {
+            nextSequence: value.nextSequence,
+            earliestSequence: value.earliestSequence,
+          }
+        : undefined
+    )
+  }
   const [queries, setQueries] = useState<Record<ExplorerMode, Query>>({
     traces: defaultQuery(),
     spans: defaultQuery(),
@@ -53,7 +72,6 @@ export const useTraceViewer = (client: TraceClient) => {
   const [details, setDetails] = useState<Detail[]>([])
   const [paused, setPaused] = useState(false)
   const [holding, setHolding] = useState(false)
-  const [pending, setPending] = useState<TracePage>()
   const [metricQuery, setMetricQuery] = useState('')
   const [metricCategory, setMetricCategory] = useState('all')
   const [metricSort, setMetricSort] = useState('name')
@@ -76,13 +94,20 @@ export const useTraceViewer = (client: TraceClient) => {
   latestPage.current = page
   useEffect(() => {
     if (!snapshot.visible) return
+    let cached: TracePage | undefined
+    let cachedRecording: ReturnType<TraceClient['getRecording']>
     let cancelled = false
     let timer: ReturnType<typeof setTimeout>
     const refresh = async () => {
       try {
         const recording = client.getRecording()
         if (recording) {
-          const next = await readSnapshot(recording)
+          if (cachedRecording !== recording) {
+            cached = undefined
+            cachedRecording = recording
+          }
+          const next = await readSnapshot(recording, cached)
+          cached = next
           if (cancelled || recording !== client.getRecording()) return
           const current = recording.getStats()
           setStats(current)
@@ -131,15 +156,27 @@ export const useTraceViewer = (client: TraceClient) => {
       clearTimeout(timer)
     }
   }, [client, snapshot.visible])
-  const traces = useMemo(() => buildTraces(page), [page])
-  const metrics = useMemo(() => recordingMetrics(page), [page])
+  const traces = useMemo(() => buildTraces(page), [page.spans, page.marks])
+  const metrics = useMemo(
+    () =>
+      tab === 'metrics' || tab === 'overview' ? recordingMetrics(page) : [],
+    [page, tab]
+  )
+  const operations = useMemo(
+    () => (tab === 'metrics' ? operationMetrics(page.spans) : []),
+    [page.spans, tab]
+  )
   const query = queries[mode]
+  const deferredQuery = useDeferredValue(query)
   const results = useMemo(
     () =>
       mode === 'traces'
-        ? queryTraces(traces, query)
-        : queryEvents(mode === 'spans' ? page.spans : page.marks, query),
-    [mode, traces, page, query]
+        ? queryTraces(traces, deferredQuery)
+        : queryEvents(
+            mode === 'spans' ? page.spans : page.marks,
+            deferredQuery
+          ),
+    [mode, traces, page.spans, page.marks, deferredQuery]
   )
   const updateQuery = (patch: Partial<Query>) => {
     setHolding(true)
@@ -150,6 +187,7 @@ export const useTraceViewer = (client: TraceClient) => {
     offsets.current[mode] = 0
   }
   const apply = () => {
+    const pending = pendingPage.current
     if (pending) setPage(pending)
     setPending(undefined)
     setHolding(false)
@@ -189,8 +227,9 @@ export const useTraceViewer = (client: TraceClient) => {
     mode,
     setMode,
     page,
-    stats,
-    error,
+    telemetry,
+    stats: telemetry.stats.peek(),
+    error: telemetry.error.peek(),
     traces,
     results,
     query,
@@ -205,9 +244,12 @@ export const useTraceViewer = (client: TraceClient) => {
         : mode === 'spans'
           ? page.spans.length
           : page.marks.length,
-    uncorrelated:
-      page.spans.filter((s) => !s.correlationId).length +
-      page.marks.filter((s) => !s.correlationId).length,
+    uncorrelated: useMemo(
+      () =>
+        page.spans.filter((s) => !s.correlationId).length +
+        page.marks.filter((s) => !s.correlationId).length,
+      [page.spans, page.marks]
+    ),
     detail,
     detailState,
     details,
@@ -216,26 +258,10 @@ export const useTraceViewer = (client: TraceClient) => {
     traceFor: (span: SpanEvent) => traceForSpan(traces, span),
     showSpans: (patch: Partial<Query>) => showEvents('spans', patch),
     showMarks: (patch: Partial<Query>) => showEvents('marks', patch),
-    evicted: (() => {
-      const retained = pending ?? page
-      if (!detail) return false
-      const sequences = new Set(
-        [...retained.spans, ...retained.marks, ...retained.metrics].map(
-          (event) => event.sequence
-        )
-      )
-      const inspected =
-        detail.kind === 'trace'
-          ? [...detail.value.spans, ...detail.value.marks]
-          : detail.kind === 'metric'
-            ? detail.value.samples
-            : [detail.value]
-      return inspected.some((event) => !sequences.has(event.sequence))
-    })(),
     paused,
     holding,
     setHolding,
-    pending,
+    pending: telemetry.pending.peek(),
     apply,
     togglePause: () => {
       if (paused) apply()
@@ -243,7 +269,7 @@ export const useTraceViewer = (client: TraceClient) => {
     },
     offsets,
     metrics,
-    operations: operationMetrics(page.spans),
+    operations,
     metricQuery,
     setMetricQuery,
     metricCategory,

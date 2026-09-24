@@ -23,7 +23,9 @@ export function useExampleTracing() {
     const next = createTraceClient({
       ...createExpoTraceSharing(),
       runtimeMetrics: true,
-      autoProfile: __DEV__,
+      // On demand (Tools or Flag): continuous sampling raced Fast Refresh and a dev
+      // reload mid-profile aborts in Hermes' sampler.
+      autoProfile: false,
       profiler: createReleaseProfilerPlugin(profiler),
       plugins: [
         createNativeMetricsPlugin(),

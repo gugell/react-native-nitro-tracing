@@ -15,7 +15,7 @@ const capital = (id: string) => id[0].toUpperCase() + id.slice(1)
 const issueLabel = (issue: Issue) =>
   `issue${capital(issue.kind)}` as InspectorLabelKey
 const ms = (value: number | undefined) =>
-  value === undefined ? '—' : value.toFixed(0)
+  value === undefined ? '—' : formatMetric(value, 'ms')
 const MAX_ISSUES = 20
 /** Opens the matching detail; metric samples open their series. */
 export const openEvent = (v: Viewer, event: AnyEvent) => {

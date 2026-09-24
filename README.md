@@ -165,7 +165,7 @@ MIT.
 
 ### Automatic development profiling
 
-Pass `autoProfile: true` together with a `profiler` to `createTraceClient` to start Hermes sampling on every recording. Stopping, exporting or disposing the recording stops sampling and saves its artifact. Sampling failure is reported without disabling traces. The default remains manual. Enable this explicitly in development; sampling adds overhead and continuous profiles grow until stopped. Use the inspector to stop and share a profile. Do not run another Hermes sampler concurrently.
+Pass `autoProfile: true` together with a `profiler` to `createTraceClient` to start Hermes sampling on every recording. Stopping, exporting or disposing the recording stops sampling and saves its artifact. Avoid it in development: the Hermes sampler is process-wide, and a reload that tears down the JS runtime mid-profile aborts the app. Prefer `client.flag()` or the inspector's Tools for bounded profiles. Sampling failure is reported without disabling traces. The default remains manual. Enable this explicitly in development; sampling adds overhead and continuous profiles grow until stopped. Use the inspector to stop and share a profile. Do not run another Hermes sampler concurrently.
 
 ### Migrating an existing tracer
 
@@ -235,7 +235,7 @@ createTraceClient({
 - Marks and flags become instant events.
 - Metrics become counter tracks (FPS, CPU, memory, stalls) aligned on the same clock.
 
-`client.shareTrace('perfetto')` shares a snapshot without stopping the recording. The overlay's **Share trace** button and the inspector's Share menu both use it. `client.export()` still stops the recording and shares the lossless recording JSON. Custom `share(recording, format)` adapters receive `'recording'` or `'perfetto'`. The overlay's **Flag** button records a `flag` mark, so testers can pin the moment they saw a problem before sharing.
+`client.shareTrace('perfetto')` shares a snapshot without stopping the recording. The overlay's **Share trace** button and the inspector's Share menu both use it. `client.export()` still stops the recording and shares the lossless recording JSON. Custom `share(recording, format)` adapters receive `'recording'` or `'perfetto'`. The overlay's **Flag** button calls `client.flag(note?)`. It records a `flag` mark, so testers can pin the moment they saw a problem before sharing. With a `profiler` attached and idle, it also captures a Hermes CPU profile for `flagProfileMs` (default 10000; 0 disables it). The profile shows as a `hermes.profile` span in the Perfetto export, and a `hermes.profile.saved` mark carries the `.cpuprofile` path. The trace client keeps 10000 events by default, and metric samples may use at most half of them, so multi-hour UAT sessions keep their spans.
 
 ### Live overlay
 

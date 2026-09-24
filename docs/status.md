@@ -23,21 +23,20 @@ Verified on an iPhone 13 Pro Max and a Pixel 7a (dev builds), through a producti
 
 - The Hermes sampling profiler is process-wide. If a dev reload tears down the JS runtime while it is sampling, the app aborts. Keep `autoProfile` off in dev and profile on demand.
 - Android uses the package's own tab bar, because the Material tab bar needs a MaterialComponents app theme.
-- The example app can race the release profiler on Fast Refresh ("session is already active").
 
 ## Checklist
 
 ### Before UAT
 
 - [ ] Run a release/UAT build on both platforms, covering: ProGuard, the overlay's show/hide flag, and sampler overhead with Hermes release settings.
-- [ ] Raise the default `maxEvents` for multi-hour sessions.
-- [ ] Flag an issue with a bounded CPU profile, linked from the Perfetto export.
+- [x] Raise the default `maxEvents` for multi-hour sessions (10000 events, 6 MB; metrics use at most half).
+- [x] Flag an issue with a bounded CPU profile, linked from the Perfetto export (`client.flag()`, `flagProfileMs`).
 - [ ] Guard the profiler against runtime teardown, or document that it must stay off during reloads.
 - [ ] Publish the package (hosts use a vendored tarball until then).
 
 ### Polish
 
-- [ ] Summary topic headlines use formatted units (the Startup line still shows raw ms).
-- [ ] Fix the example app's profiler race on Fast Refresh.
+- [x] Summary topic headlines use formatted units.
+- [x] Fix the example app's profiler race on Fast Refresh (profiling is on demand now).
 - [ ] Android native tabs with image icons, if a host opts into a MaterialComponents theme.
 - [ ] Track which trace sources were rejected, so "events dropped" says what was lost.

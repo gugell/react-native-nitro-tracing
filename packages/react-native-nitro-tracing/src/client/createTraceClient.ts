@@ -166,8 +166,9 @@ export function createTraceClient(options: TraceClientOptions = {}) {
     recording = undefined
     const { Tracing } = require('../index') as typeof import('../index')
     recording = Tracing.startRecording({
-      maxEvents: 3000,
-      maxBytes: 2 * 1024 * 1024,
+      // ~1-2 hours of spans for UAT sessions; metric samples use at most half.
+      maxEvents: 10000,
+      maxBytes: 6 * 1024 * 1024,
       maxActiveSpans: 256,
       spanTimeoutMs: 30 * 60 * 1000,
       ...options.recordingOptions,

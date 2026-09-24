@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.6.1](https://github.com/gugell/react-native-nitro-tracing/compare/v0.6.0...v0.6.1) (2026-09-24)
+
+### Bug Fixes
+
+* keep untracked files out of release commits ([c6c1cac](https://github.com/gugell/react-native-nitro-tracing/commit/c6c1cac6d9be7051010f90ad06502b1d27072562))
+
+### Documentation
+
+* record the 0.6.0 publication and remaining trusted-publisher steps ([2afb6a1](https://github.com/gugell/react-native-nitro-tracing/commit/2afb6a158ba4e7c9abe01008a96ea802e7509d65))
+
 ## 0.6.0
 
 First public release. In-app performance tracing for React Native, for development, custom and UAT builds.
